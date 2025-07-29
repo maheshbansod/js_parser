@@ -2,6 +2,7 @@ use std::str::CharIndices;
 
 use crate::{operators::operators_map, tokens::keywords_map};
 
+#[derive(Clone, Debug)]
 pub struct Tokenizer<'a> {
     it: CharIndices<'a>,
 
@@ -25,6 +26,7 @@ impl<'a> Tokenizer<'a> {
         // whitespace consumption
         self.consume_whitespace();
         self.consume_keyword()
+            .or_else(|| self.consume_literal())
             .or_else(|| self.consume_identifier())
             .or_else(|| self.consume_operator())
     }
@@ -35,11 +37,46 @@ impl<'a> Tokenizer<'a> {
 
     fn consume_keyword(&mut self) -> Option<Token> {
         for (keyword_str, keyword_token_kind) in keywords_map().iter() {
-            if let Some(token) = self.consume_as_keyword(&keyword_str, *keyword_token_kind) {
+            if let Some(token) = self.consume_as_keyword(keyword_str, *keyword_token_kind) {
                 return Some(token);
             }
         }
-        return None;
+        None
+    }
+
+    fn consume_literal(&mut self) -> Option<Token> {
+        (if let Some(span) = self.consume_till(|c| !c.is_numeric()) {
+            Some((span, TokenKind::NumberLiteral))
+        } else {
+            let start = self.current_position();
+            if let Some((_quote_start_span, quote_str)) = self
+                .consume_string("\"")
+                .map(|s| (s, "\""))
+                .or_else(|| self.consume_string("'").map(|s| (s, "'")))
+            {
+                let literal_span = self
+                    .consume_till(|c| quote_str.starts_with(c))
+                    .map(|_| {
+                        let _end_quote = self.consume_string(quote_str);
+                        let end = self.current_position();
+                        Span {
+                            start: start.clone(),
+                            end,
+                        }
+                    })
+                    .unwrap_or_else(|| Span {
+                        start: start.clone(),
+                        end: self.current_position(),
+                    });
+                Some((literal_span, TokenKind::StringLiteral))
+            } else {
+                None
+            }
+        })
+        .map(|(span, token_kind)| Token {
+            span,
+            kind: token_kind,
+        })
     }
 
     fn consume_identifier(&mut self) -> Option<Token> {
@@ -51,11 +88,11 @@ impl<'a> Tokenizer<'a> {
 
     fn consume_operator(&mut self) -> Option<Token> {
         for (operator_str, operator_token_kind) in operators_map().iter() {
-            if let Some(token) = self.consume_as_operator(&operator_str, *operator_token_kind) {
+            if let Some(token) = self.consume_as_operator(operator_str, *operator_token_kind) {
                 return Some(token);
             }
         }
-        return None;
+        None
     }
 
     fn consume_as_keyword(&mut self, s: &str, kind: TokenKind) -> Option<Token> {
@@ -96,7 +133,7 @@ impl<'a> Tokenizer<'a> {
         Some(span)
     }
 
-    fn _consume_string(&mut self, s: &str) -> Option<Span> {
+    fn consume_string(&mut self, s: &str) -> Option<Span> {
         let mut it_clone = self.it.clone();
         for c in s.chars() {
             if let Some((_i, next_c)) = it_clone.next() {
@@ -118,9 +155,9 @@ impl<'a> Tokenizer<'a> {
     where
         C: Fn(char) -> bool,
     {
-        let mut it_clone = self.it.clone();
+        let it_clone = self.it.clone();
         let mut characters_to_consume = 0;
-        while let Some((_i, c)) = it_clone.next() {
+        for (_i, c) in it_clone {
             if condition(c) {
                 break;
             }
@@ -174,7 +211,7 @@ impl Span {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Position {
     pub index: usize,
     pub line: usize,
@@ -328,6 +365,32 @@ mod tests {
         assert_eq!(tokenizer.next().unwrap().kind, TokenKind::Identifier); // "foo"
         assert_eq!(tokenizer.next().unwrap().kind, TokenKind::Eq);
         assert_eq!(tokenizer.next().unwrap().kind, TokenKind::Identifier); // "bar"
+        assert_eq!(tokenizer.next().unwrap().kind, TokenKind::Semicolon);
+        assert!(tokenizer.next().is_none()); // Eof
+    }
+
+    #[test]
+    fn test_tokenizer_string_literal() {
+        let source = "let foo = \"string\";";
+        let mut tokenizer = Tokenizer::new(source);
+
+        assert_eq!(tokenizer.next().unwrap().kind, TokenKind::Let);
+        assert_eq!(tokenizer.next().unwrap().kind, TokenKind::Identifier);
+        assert_eq!(tokenizer.next().unwrap().kind, TokenKind::Eq);
+        assert_eq!(tokenizer.next().unwrap().kind, TokenKind::StringLiteral);
+        assert_eq!(tokenizer.next().unwrap().kind, TokenKind::Semicolon);
+        assert!(tokenizer.next().is_none()); // Eof
+    }
+
+    #[test]
+    fn test_tokenizer_number_literal() {
+        let source = "let foo = 1234;";
+        let mut tokenizer = Tokenizer::new(source);
+
+        assert_eq!(tokenizer.next().unwrap().kind, TokenKind::Let);
+        assert_eq!(tokenizer.next().unwrap().kind, TokenKind::Identifier);
+        assert_eq!(tokenizer.next().unwrap().kind, TokenKind::Eq);
+        assert_eq!(tokenizer.next().unwrap().kind, TokenKind::NumberLiteral);
         assert_eq!(tokenizer.next().unwrap().kind, TokenKind::Semicolon);
         assert!(tokenizer.next().is_none()); // Eof
     }
