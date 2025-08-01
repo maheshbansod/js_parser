@@ -1,4 +1,5 @@
 mod atom;
+mod expression;
 
 use crate::{Token, tokenizer::Tokenizer};
 
@@ -14,7 +15,7 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse(&mut self) -> ParseTree {
-        self.parse_atom();
+        self.parse_expression();
         todo!()
     }
 

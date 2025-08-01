@@ -1,3 +1,4 @@
+mod node;
 mod operators;
 mod parser;
 mod tokenizer;

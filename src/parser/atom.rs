@@ -1,4 +1,7 @@
-use crate::tokenizer::{Span, TokenKind};
+use crate::{
+    node::Node,
+    tokenizer::{Span, TokenKind},
+};
 
 use super::Parser;
 
@@ -34,6 +37,12 @@ pub enum AtomKind {
     StringLiteral,
 }
 
+impl Node for Atom {
+    fn span(&self) -> Span {
+        self.span
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -44,8 +53,8 @@ mod tests {
         let mut parser = Parser::new(source);
         let atom = parser.parse_atom().unwrap();
 
-        assert_eq!(atom.span.start.index, 0);
-        assert_eq!(atom.span.end.index, 5);
+        assert_eq!(atom.span().start.index, 0);
+        assert_eq!(atom.span().end.index, 5);
         assert!(matches!(atom.kind, AtomKind::Identifier));
     }
 

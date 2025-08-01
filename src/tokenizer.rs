@@ -199,19 +199,25 @@ pub struct Token {
     pub kind: TokenKind,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct Span {
     pub start: Position,
     pub end: Position,
 }
 
 impl Span {
+    pub fn concat(a: Span, b: Span) -> Self {
+        Self {
+            start: a.start,
+            end: b.end,
+        }
+    }
     pub fn source<'a>(&self, source: &'a str) -> &'a str {
         &source[self.start.index..self.end.index]
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct Position {
     pub index: usize,
     pub line: usize,
