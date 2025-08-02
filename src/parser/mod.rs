@@ -1,5 +1,6 @@
 mod atom;
 mod expression;
+mod statement;
 
 use crate::{Token, tokenizer::Tokenizer};
 

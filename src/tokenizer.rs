@@ -194,6 +194,7 @@ impl<'a> Tokenizer<'a> {
     }
 }
 
+#[derive(Debug)]
 pub struct Token {
     pub span: Span,
     pub kind: TokenKind,

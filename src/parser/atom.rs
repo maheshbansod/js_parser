@@ -26,11 +26,13 @@ impl<'a> Parser<'a> {
     }
 }
 
+#[derive(Debug)]
 pub struct Atom {
     pub span: Span,
     pub kind: AtomKind,
 }
 
+#[derive(Debug)]
 pub enum AtomKind {
     Identifier,
     NumberLiteral,

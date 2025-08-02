@@ -74,36 +74,42 @@ impl<'a> Parser<'a> {
     }
 }
 
+#[derive(Debug)]
 pub enum Expression {
     Binary(BinaryExpression),
     Unary(UnaryExpression),
     Atom(Atom),
 }
 
+#[derive(Debug)]
 pub struct BinaryExpression {
-    left: Box<Expression>,
-    right: Box<Expression>,
-    operator: BinaryOperator,
+    pub left: Box<Expression>,
+    pub right: Box<Expression>,
+    pub operator: BinaryOperator,
 }
 
+#[derive(Debug)]
 pub struct UnaryExpression {
-    operand: Box<Expression>,
-    operator: UnaryOperator,
+    pub operand: Box<Expression>,
+    pub operator: UnaryOperator,
 }
 
+#[derive(Debug)]
 pub struct BinaryOperator {
-    token: Token,
-    kind: BinaryOperatorKind,
+    pub token: Token,
+    pub kind: BinaryOperatorKind,
 }
 
+#[derive(Debug)]
 pub enum BinaryOperatorKind {
     Add,
     Subtract,
 }
 
+#[derive(Debug)]
 pub struct UnaryOperator {
-    token: Token,
-    kind: UnaryOperatorKind,
+    pub token: Token,
+    pub kind: UnaryOperatorKind,
 }
 
 #[derive(Debug)]
