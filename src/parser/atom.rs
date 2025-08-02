@@ -12,6 +12,7 @@ impl<'a> Parser<'a> {
                 TokenKind::Identifier => Some(AtomKind::Identifier),
                 TokenKind::NumberLiteral => Some(AtomKind::NumberLiteral),
                 TokenKind::StringLiteral => Some(AtomKind::StringLiteral),
+                TokenKind::BooleanLiteral => Some(AtomKind::BooleanLiteral),
                 _ => None,
             })
             .map(|atom_kind| {
@@ -37,6 +38,7 @@ pub enum AtomKind {
     Identifier,
     NumberLiteral,
     StringLiteral,
+    BooleanLiteral,
 }
 
 impl Node for Atom {
@@ -79,5 +81,14 @@ mod tests {
         assert_eq!(atom.span.start.index, 0);
         assert_eq!(atom.span.end.index, 7);
         assert!(matches!(atom.kind, AtomKind::StringLiteral));
+    }
+    #[test]
+    fn test_parse_atom_literal_boolean() {
+        let source = "true";
+        let mut parser = Parser::new(source);
+        let atom = parser.parse_atom().unwrap();
+        assert_eq!(atom.span.start.index, 0);
+        assert_eq!(atom.span.end.index, 4);
+        assert!(matches!(atom.kind, AtomKind::BooleanLiteral));
     }
 }
