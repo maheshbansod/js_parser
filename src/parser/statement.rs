@@ -9,6 +9,7 @@ use super::{Parser, expression::Expression};
 impl<'a> Parser<'a> {
     pub fn parse_statement(&mut self) -> Option<Statement> {
         self.parse_block_statement()
+            .or_else(|| self.parse_if_statement())
             .or_else(|| self.parse_expression_statement())
     }
 
@@ -43,7 +44,6 @@ impl<'a> Parser<'a> {
                     end_token,
                     start_token,
                 }),
-                end_token: None,
             })
         } else {
             None
@@ -51,18 +51,32 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_if_statement(&mut self) -> Option<Statement> {
-        todo!()
+        let start_token = self.consume_token_if(TokenKind::If)?;
+        self.consume_token_if(TokenKind::LParen)?;
+        let condition = self.parse_expression()?;
+        self.consume_token_if(TokenKind::RParen)?;
+        let consequent = self.parse_statement()?;
+        let alternate = self
+            .consume_token_if(TokenKind::Else)
+            .and_then(|_| self.parse_statement().map(|s| Box::new(s)));
+        Some(Statement {
+            kind: StatementKind::IfStatement(IfStatement {
+                start_token,
+                condition,
+                consequent: Box::new(consequent),
+                alternate,
+            }),
+        })
     }
 
     fn parse_expression_statement(&mut self) -> Option<Statement> {
         self.parse_expression().map(|exp| {
-            let end_token = self
+            let _end_token = self
                 .tok_look_ahead()
                 .filter(|t| matches!(t.kind, TokenKind::Semicolon))
                 .and_then(|_| self.tokenizer.next());
             Statement {
                 kind: StatementKind::ExpressionStatement(exp),
-                end_token,
             }
         })
     }
@@ -71,7 +85,6 @@ impl<'a> Parser<'a> {
 #[derive(Debug)]
 pub struct Statement {
     kind: StatementKind,
-    end_token: Option<Token>,
 }
 
 #[derive(Debug)]
@@ -85,15 +98,15 @@ pub enum StatementKind {
 impl Node for Statement {
     fn span(&self) -> crate::tokenizer::Span {
         match &self.kind {
-            StatementKind::ExpressionStatement(expression) => {
-                let exp_span = expression.span();
-                self.end_token
-                    .as_ref()
-                    .map(|token| Span::concat(exp_span, token.span))
-                    .unwrap_or_else(|| exp_span)
-            }
+            StatementKind::ExpressionStatement(expression) => expression.span(),
             StatementKind::IfStatement(if_stmt) => {
-                todo!()
+                let start = if_stmt.start_token.span;
+                let end = if_stmt
+                    .alternate
+                    .as_ref()
+                    .map(|a| a.span())
+                    .unwrap_or_else(|| if_stmt.consequent.span());
+                Span::concat(start, end)
             }
             StatementKind::BlockStatement(block_stmt) => block_stmt
                 .end_token
@@ -106,9 +119,10 @@ impl Node for Statement {
 
 #[derive(Debug)]
 struct IfStatement {
+    start_token: Token,
     condition: Expression,
     consequent: Box<Statement>,
-    alternate: Box<Statement>,
+    alternate: Option<Box<Statement>>,
 }
 
 #[derive(Debug)]
@@ -139,13 +153,11 @@ mod tests {
 
     #[test]
     fn test_parse_expression_statement_identifier() {
-        let stmt = parse_and_check("myVar;", 0, 6); // Span of "myVar"
+        let stmt = parse_and_check("myVar;", 0, 5); // Span of "myVar"
         if let StatementKind::ExpressionStatement(expr) = stmt.kind {
             assert!(
                 matches!(expr, Expression::Atom(atom) if matches!(atom.kind, AtomKind::Identifier))
             );
-            assert!(stmt.end_token.is_some());
-            assert_eq!(stmt.end_token.unwrap().kind, TokenKind::Semicolon);
         } else {
             panic!("Expected ExpressionStatement, got {:?}", stmt.kind);
         }
@@ -153,13 +165,11 @@ mod tests {
 
     #[test]
     fn test_parse_expression_statement_number_literal() {
-        let stmt = parse_and_check("123;", 0, 4); // Span of "123"
+        let stmt = parse_and_check("123;", 0, 3); // Span of "123"
         if let StatementKind::ExpressionStatement(expr) = stmt.kind {
             assert!(
                 matches!(expr, Expression::Atom(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
             );
-            assert!(stmt.end_token.is_some());
-            assert_eq!(stmt.end_token.unwrap().kind, TokenKind::Semicolon);
         } else {
             panic!("Expected ExpressionStatement, got {:?}", stmt.kind);
         }
@@ -167,7 +177,7 @@ mod tests {
 
     #[test]
     fn test_parse_expression_statement_binary_expression() {
-        let stmt = parse_and_check("1 + 2;", 0, 6); // Span of "1 + 2"
+        let stmt = parse_and_check("1 + 2;", 0, 5); // Span of "1 + 2"
         if let StatementKind::ExpressionStatement(expr) = stmt.kind {
             if let Expression::Binary(binary_expr) = expr {
                 assert!(matches!(binary_expr.operator.kind, BinaryOperatorKind::Add));
@@ -180,8 +190,6 @@ mod tests {
             } else {
                 panic!("Expected Binary expression, got {:?}", expr);
             }
-            assert!(stmt.end_token.is_some());
-            assert_eq!(stmt.end_token.unwrap().kind, TokenKind::Semicolon);
         } else {
             panic!("Expected ExpressionStatement, got {:?}", stmt.kind);
         }
@@ -189,7 +197,7 @@ mod tests {
 
     #[test]
     fn test_parse_expression_statement_unary_expression() {
-        let stmt = parse_and_check("-foo;", 0, 5); // Span of "-foo"
+        let stmt = parse_and_check("-foo;", 0, 4); // Span of "-foo"
         if let StatementKind::ExpressionStatement(expr) = stmt.kind {
             if let Expression::Unary(unary_expr) = expr {
                 assert!(matches!(
@@ -202,8 +210,6 @@ mod tests {
             } else {
                 panic!("Expected Unary expression, got {:?}", expr);
             }
-            assert!(stmt.end_token.is_some());
-            assert_eq!(stmt.end_token.unwrap().kind, TokenKind::Semicolon);
         } else {
             panic!("Expected ExpressionStatement, got {:?}", stmt.kind);
         }
@@ -216,120 +222,119 @@ mod tests {
             assert!(
                 matches!(expr, Expression::Atom(atom) if matches!(atom.kind, AtomKind::Identifier))
             );
-            assert!(stmt.end_token.is_none()); // Expect no semicolon
         } else {
             panic!("Expected ExpressionStatement, got {:?}", stmt.kind);
         }
     }
-    // #[test]
-    // fn test_parse_if_statement_basic() {
-    //     let stmt = parse_and_check("if (true) {}", 0, 13);
-    //     if let StatementKind::IfStatement(if_stmt) = stmt.kind {
-    //         assert!(
-    //             matches!(if_stmt.condition, Expression::Atom(atom) if matches!(atom.kind, AtomKind::BooleanLiteral))
-    //         );
-    //         if let StatementKind::BlockStatement(block) = if_stmt.consequent.kind {
-    //             assert!(block.body.is_empty());
-    //         } else {
-    //             panic!("Expected BlockStatement for consequent");
-    //         }
-    //         assert!(if_stmt.alternate.is_none());
-    //     } else {
-    //         panic!("Expected IfStatement, got {:?}", stmt.kind);
-    //     }
-    // }
-    //
-    // #[test]
-    // fn test_parse_if_statement_with_body() {
-    //     let stmt = parse_and_check("if (false) { 1; }", 0, 18);
-    //     if let StatementKind::IfStatement(if_stmt) = stmt.kind {
-    //         assert!(
-    //             matches!(if_stmt.condition, Expression::Atom(atom) if matches!(atom.kind, AtomKind::BooleanLiteral))
-    //         );
-    //         if let StatementKind::BlockStatement(block) = if_stmt.consequent.kind {
-    //             assert_eq!(block.body.len(), 1);
-    //             assert!(matches!(
-    //                 block.body[0].kind,
-    //                 StatementKind::ExpressionStatement(_)
-    //             ));
-    //         } else {
-    //             panic!("Expected BlockStatement for consequent");
-    //         }
-    //         assert!(if_stmt.alternate.is_none());
-    //     } else {
-    //         panic!("Expected IfStatement, got {:?}", stmt.kind);
-    //     }
-    // }
-    //
-    // #[test]
-    // fn test_parse_if_else_statement() {
-    //     let stmt = parse_and_check("if (a) { b; } else { c; }", 0, 26);
-    //     if let StatementKind::IfStatement(if_stmt) = stmt.kind {
-    //         assert!(
-    //             matches!(if_stmt.condition, Expression::Atom(atom) if matches!(atom.kind, AtomKind::Identifier))
-    //         );
-    //         if let StatementKind::BlockStatement(consequent_block) = if_stmt.consequent.kind {
-    //             assert_eq!(consequent_block.body.len(), 1);
-    //         } else {
-    //             panic!("Expected BlockStatement for consequent");
-    //         }
-    //         assert!(if_stmt.alternate.is_some());
-    //         if let Some(alternate_stmt) = if_stmt.alternate {
-    //             if let StatementKind::BlockStatement(alternate_block) = alternate_stmt.kind {
-    //                 assert_eq!(alternate_block.body.len(), 1);
-    //             } else {
-    //                 panic!("Expected BlockStatement for alternate");
-    //             }
-    //         }
-    //     } else {
-    //         panic!("Expected IfStatement, got {:?}", stmt.kind);
-    //     }
-    // }
-    //
-    // #[test]
-    // fn test_parse_if_else_if_else_statement() {
-    //     let stmt = parse_and_check("if (a) { b; } else if (c) { d; } else { e; }", 0, 45);
-    //     if let StatementKind::IfStatement(if_stmt) = stmt.kind {
-    //         assert!(
-    //             matches!(if_stmt.condition, Expression::Atom(atom) if matches!(atom.kind, AtomKind::Identifier))
-    //         );
-    //         if let StatementKind::BlockStatement(consequent_block) = if_stmt.consequent.kind {
-    //             assert_eq!(consequent_block.body.len(), 1);
-    //         } else {
-    //             panic!("Expected BlockStatement for consequent");
-    //         }
-    //
-    //         assert!(if_stmt.alternate.is_some());
-    //         if let Some(alternate_stmt) = if_stmt.alternate {
-    //             if let StatementKind::IfStatement(nested_if_stmt) = alternate_stmt.kind {
-    //                 assert!(
-    //                     matches!(nested_if_stmt.condition, Expression::Atom(atom) if matches!(atom.kind, AtomKind::Identifier))
-    //                 );
-    //                 if let StatementKind::BlockStatement(nested_consequent_block) =
-    //                     nested_if_stmt.consequent.kind
-    //                 {
-    //                     assert_eq!(nested_consequent_block.body.len(), 1);
-    //                 } else {
-    //                     panic!("Expected BlockStatement for nested consequent");
-    //                 }
-    //                 assert!(nested_if_stmt.alternate.is_some());
-    //                 if let Some(final_alternate_stmt) = nested_if_stmt.alternate {
-    //                     if let StatementKind::BlockStatement(final_alternate_block) =
-    //                         final_alternate_stmt.kind
-    //                     {
-    //                         assert_eq!(final_alternate_block.body.len(), 1);
-    //                     } else {
-    //                         panic!("Expected BlockStatement for final alternate");
-    //                     }
-    //                 }
-    //             } else {
-    //                 panic!("Expected nested IfStatement, got {:?}", alternate_stmt.kind);
-    //             }
-    //         }
-    //     } else {
-    //         panic!("Expected IfStatement, got {:?}", stmt.kind);
-    //     }
-    // }
+    #[test]
+    fn test_parse_if_statement_basic() {
+        let stmt = parse_and_check("if (true) {}", 0, 12);
+        if let StatementKind::IfStatement(if_stmt) = stmt.kind {
+            assert!(
+                matches!(if_stmt.condition, Expression::Atom(atom) if matches!(atom.kind, AtomKind::BooleanLiteral))
+            );
+            if let StatementKind::BlockStatement(block) = if_stmt.consequent.kind {
+                assert!(block.body.is_empty());
+            } else {
+                panic!("Expected BlockStatement for consequent");
+            }
+            assert!(if_stmt.alternate.is_none());
+        } else {
+            panic!("Expected IfStatement, got {:?}", stmt.kind);
+        }
+    }
+
+    #[test]
+    fn test_parse_if_statement_with_body() {
+        let stmt = parse_and_check("if (false) { 1; }", 0, 17);
+        if let StatementKind::IfStatement(if_stmt) = stmt.kind {
+            assert!(
+                matches!(if_stmt.condition, Expression::Atom(atom) if matches!(atom.kind, AtomKind::BooleanLiteral))
+            );
+            if let StatementKind::BlockStatement(block) = if_stmt.consequent.kind {
+                assert_eq!(block.body.len(), 1);
+                assert!(matches!(
+                    block.body[0].kind,
+                    StatementKind::ExpressionStatement(_)
+                ));
+            } else {
+                panic!("Expected BlockStatement for consequent");
+            }
+            assert!(if_stmt.alternate.is_none());
+        } else {
+            panic!("Expected IfStatement, got {:?}", stmt.kind);
+        }
+    }
+
+    #[test]
+    fn test_parse_if_else_statement() {
+        let stmt = parse_and_check("if (a) { b; } else { c; }", 0, 25);
+        if let StatementKind::IfStatement(if_stmt) = stmt.kind {
+            assert!(
+                matches!(if_stmt.condition, Expression::Atom(atom) if matches!(atom.kind, AtomKind::Identifier))
+            );
+            if let StatementKind::BlockStatement(consequent_block) = if_stmt.consequent.kind {
+                assert_eq!(consequent_block.body.len(), 1);
+            } else {
+                panic!("Expected BlockStatement for consequent");
+            }
+            assert!(if_stmt.alternate.is_some());
+            if let Some(alternate_stmt) = if_stmt.alternate {
+                if let StatementKind::BlockStatement(alternate_block) = alternate_stmt.kind {
+                    assert_eq!(alternate_block.body.len(), 1);
+                } else {
+                    panic!("Expected BlockStatement for alternate");
+                }
+            }
+        } else {
+            panic!("Expected IfStatement, got {:?}", stmt.kind);
+        }
+    }
+
+    #[test]
+    fn test_parse_if_else_if_else_statement() {
+        let stmt = parse_and_check("if (a) { b; } else if (c) { d; } else { e; }", 0, 44);
+        if let StatementKind::IfStatement(if_stmt) = stmt.kind {
+            assert!(
+                matches!(if_stmt.condition, Expression::Atom(atom) if matches!(atom.kind, AtomKind::Identifier))
+            );
+            if let StatementKind::BlockStatement(consequent_block) = if_stmt.consequent.kind {
+                assert_eq!(consequent_block.body.len(), 1);
+            } else {
+                panic!("Expected BlockStatement for consequent");
+            }
+
+            assert!(if_stmt.alternate.is_some());
+            if let Some(alternate_stmt) = if_stmt.alternate {
+                if let StatementKind::IfStatement(nested_if_stmt) = alternate_stmt.kind {
+                    assert!(
+                        matches!(nested_if_stmt.condition, Expression::Atom(atom) if matches!(atom.kind, AtomKind::Identifier))
+                    );
+                    if let StatementKind::BlockStatement(nested_consequent_block) =
+                        nested_if_stmt.consequent.kind
+                    {
+                        assert_eq!(nested_consequent_block.body.len(), 1);
+                    } else {
+                        panic!("Expected BlockStatement for nested consequent");
+                    }
+                    assert!(nested_if_stmt.alternate.is_some());
+                    if let Some(final_alternate_stmt) = nested_if_stmt.alternate {
+                        if let StatementKind::BlockStatement(final_alternate_block) =
+                            final_alternate_stmt.kind
+                        {
+                            assert_eq!(final_alternate_block.body.len(), 1);
+                        } else {
+                            panic!("Expected BlockStatement for final alternate");
+                        }
+                    }
+                } else {
+                    panic!("Expected nested IfStatement, got {:?}", alternate_stmt.kind);
+                }
+            }
+        } else {
+            panic!("Expected IfStatement, got {:?}", stmt.kind);
+        }
+    }
     #[test]
     fn test_parse_block_statement_empty() {
         let stmt = parse_and_check("{}", 0, 2);
