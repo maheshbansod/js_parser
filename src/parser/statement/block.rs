@@ -8,40 +8,27 @@ use super::{Statement, StatementKind};
 
 impl<'a> Parser<'a> {
     pub fn parse_block_statement(&mut self) -> Option<Statement> {
-        if matches!(
+        let start_token = self.consume_token_if(TokenKind::LBrace)?;
+        let mut statements = vec![];
+        while !matches!(
             self.tok_look_ahead().map(|t| t.kind),
-            Some(TokenKind::LBrace),
+            Some(TokenKind::RBrace),
         ) {
-            let start_token = self.tokenizer.next().unwrap(); // consumes `{`
-            let mut statements = vec![];
-            let mut should_parse_end_token = true;
-            while !matches!(
-                self.tok_look_ahead().map(|t| t.kind),
-                Some(TokenKind::RBrace),
-            ) {
-                let statement = self.parse_statement();
-                if let Some(statement) = statement {
-                    statements.push(statement);
-                } else {
-                    should_parse_end_token = false;
-                    break;
-                }
-            }
-            let end_token = if should_parse_end_token {
-                self.tokenizer.next()
+            let statement = self.parse_statement();
+            if let Some(statement) = statement {
+                statements.push(statement);
             } else {
-                None
-            };
-            Some(Statement {
-                kind: StatementKind::BlockStatement(BlockStatement {
-                    body: statements,
-                    end_token,
-                    start_token,
-                }),
-            })
-        } else {
-            None
+                break;
+            }
         }
+        let end_token = self.consume_token_if(TokenKind::RBrace);
+        Some(Statement {
+            kind: StatementKind::BlockStatement(BlockStatement {
+                body: statements,
+                end_token,
+                start_token,
+            }),
+        })
     }
 }
 
