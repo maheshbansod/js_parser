@@ -102,8 +102,7 @@ impl<'a> Tokenizer<'a> {
     }
 
     fn consume_as_operator(&mut self, s: &str, kind: TokenKind) -> Option<Token> {
-        self.consume_till_if_matches(|c| c.is_whitespace() || c.is_alphanumeric(), s)
-            .map(|span| Token { span, kind })
+        self.consume_string(s).map(|span| Token { span, kind })
     }
 
     fn consume_alphanumeric(&mut self) -> Option<Span> {
@@ -479,5 +478,14 @@ mod tests {
         assert_eq!(tokenizer.next().unwrap().kind, TokenKind::BooleanLiteral); // "false"
         assert_eq!(tokenizer.next().unwrap().kind, TokenKind::Semicolon);
         assert!(tokenizer.next().is_none()); // Eof
+    }
+
+    #[test]
+    fn test_tokenizer_braces() {
+        let source = "{}";
+        let mut tokenizer = Tokenizer::new(source);
+
+        assert_eq!(tokenizer.next().unwrap().kind, TokenKind::LBrace);
+        assert_eq!(tokenizer.next().unwrap().kind, TokenKind::RBrace);
     }
 }
