@@ -45,33 +45,35 @@ impl<'a> Tokenizer<'a> {
     }
 
     fn consume_literal(&mut self) -> Option<Token> {
+        let start = self.current_position();
         (if let Some(span) = self.consume_till(|c| !c.is_numeric()) {
             Some((span, TokenKind::NumberLiteral))
-        } else {
-            let start = self.current_position();
-            if let Some((_quote_start_span, quote_str)) = self
-                .consume_string("\"")
-                .map(|s| (s, "\""))
-                .or_else(|| self.consume_string("'").map(|s| (s, "'")))
-            {
-                let literal_span = self
-                    .consume_till(|c| quote_str.starts_with(c))
-                    .map(|_| {
-                        let _end_quote = self.consume_string(quote_str);
-                        let end = self.current_position();
-                        Span {
-                            start: start.clone(),
-                            end,
-                        }
-                    })
-                    .unwrap_or_else(|| Span {
+        } else if let Some((_quote_start_span, quote_str)) = self
+            .consume_string("\"")
+            .map(|s| (s, "\""))
+            .or_else(|| self.consume_string("'").map(|s| (s, "'")))
+        {
+            let literal_span = self
+                .consume_till(|c| quote_str.starts_with(c))
+                .map(|_| {
+                    let _end_quote = self.consume_string(quote_str);
+                    let end = self.current_position();
+                    Span {
                         start: start.clone(),
-                        end: self.current_position(),
-                    });
-                Some((literal_span, TokenKind::StringLiteral))
-            } else {
-                None
-            }
+                        end,
+                    }
+                })
+                .unwrap_or_else(|| Span {
+                    start: start.clone(),
+                    end: self.current_position(),
+                });
+            Some((literal_span, TokenKind::StringLiteral))
+        } else if let Some(span) = self.consume_word("true") {
+            Some((span, TokenKind::BooleanLiteral))
+        } else if let Some(span) = self.consume_word("false") {
+            Some((span, TokenKind::BooleanLiteral))
+        } else {
+            None
         })
         .map(|(span, token_kind)| Token {
             span,
@@ -96,8 +98,7 @@ impl<'a> Tokenizer<'a> {
     }
 
     fn consume_as_keyword(&mut self, s: &str, kind: TokenKind) -> Option<Token> {
-        self.consume_till_if_matches(|c| !c.is_alphanumeric() && c != '_', s)
-            .map(|span| Token { span, kind })
+        self.consume_word(s).map(|span| Token { span, kind })
     }
 
     fn consume_as_operator(&mut self, s: &str, kind: TokenKind) -> Option<Token> {
@@ -107,6 +108,12 @@ impl<'a> Tokenizer<'a> {
 
     fn consume_alphanumeric(&mut self) -> Option<Span> {
         self.consume_till(|c| !c.is_alphanumeric())
+    }
+
+    /// Consumes if the upcoming word (till word boundary reached)
+    /// is equal to the given string
+    fn consume_word(&mut self, s: &str) -> Option<Span> {
+        self.consume_till_if_matches(|c| !c.is_alphanumeric() && c != '_', s)
     }
 
     fn consume_till_if_matches<C>(&mut self, condition: C, s: &str) -> Option<Span>
@@ -454,6 +461,23 @@ mod tests {
         assert_eq!(tokenizer.next().unwrap().kind, TokenKind::Identifier); // "b"
         assert_eq!(tokenizer.next().unwrap().kind, TokenKind::Semicolon);
         assert_eq!(tokenizer.next().unwrap().kind, TokenKind::RBrace);
+        assert!(tokenizer.next().is_none()); // Eof
+    }
+    #[test]
+    fn test_tokenizer_boolean_literal() {
+        let source = "let x = true; const y = false;";
+        let mut tokenizer = Tokenizer::new(source);
+
+        assert_eq!(tokenizer.next().unwrap().kind, TokenKind::Let);
+        assert_eq!(tokenizer.next().unwrap().kind, TokenKind::Identifier); // "x"
+        assert_eq!(tokenizer.next().unwrap().kind, TokenKind::Eq);
+        assert_eq!(tokenizer.next().unwrap().kind, TokenKind::BooleanLiteral); // "true"
+        assert_eq!(tokenizer.next().unwrap().kind, TokenKind::Semicolon);
+        assert_eq!(tokenizer.next().unwrap().kind, TokenKind::Const);
+        assert_eq!(tokenizer.next().unwrap().kind, TokenKind::Identifier); // "y"
+        assert_eq!(tokenizer.next().unwrap().kind, TokenKind::Eq);
+        assert_eq!(tokenizer.next().unwrap().kind, TokenKind::BooleanLiteral); // "false"
+        assert_eq!(tokenizer.next().unwrap().kind, TokenKind::Semicolon);
         assert!(tokenizer.next().is_none()); // Eof
     }
 }
