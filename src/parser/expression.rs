@@ -7,41 +7,35 @@ use crate::{
 use super::{Parser, atom::Atom};
 
 /**
- * Term = Atom | BracketedExp
- * UnaryExp = (UnaryOp Term) | Term
- * BinaryExp = UnaryExp (BinaryOp BinaryExp)*
- * Exp = BinaryExp
- * FunctionExp = Exp LParen ( Exp (Comma Exp)* ) RParen
+ * Pratt parsing gang lets go
+ *
  * */
 
 impl<'a> Parser<'a> {
     pub fn parse_expression(&mut self) -> Option<Expression> {
-        self.parse_binary_expression()
+        self.parse_expression_with_priority(0)
     }
 
-    fn parse_binary_expression(&mut self) -> Option<Expression> {
-        let left_operand = self.parse_unary_expression()?;
-        let next_token = self.tok_look_ahead();
-        if next_token.is_none() {
-            return Some(left_operand);
-        }
-        let next_token = next_token.unwrap();
-        if let Some(op_kind) = BinaryOperatorKind::try_from_token_kind(next_token.kind) {
-            let op_token = self.tokenizer.next().unwrap();
-            if let Some(right_operand) = self.parse_expression() {
-                return Some(Expression::Binary(BinaryExpression {
-                    left: Box::new(left_operand),
-                    right: Box::new(right_operand),
-                    operator: BinaryOperator {
-                        token: op_token,
-                        kind: op_kind,
-                    },
-                }));
+    /// parses expresions with given priority operator or higher
+    fn parse_expression_with_priority(&mut self, priority: u8) -> Option<Expression> {
+        let atom = self.parse_atom();
+        let mut current_exp = if let Some(atom) = atom {
+            Expression::Atom(atom)
+        } else {
+            // could be an operator next
+            if let Some(operator) = self.peek_unary_operator() {
+                let priority = operator.priority();
+                let operator = self.consume_unary_operator(operator);
+                let operand = self.parse_expression_with_priority(priority)?;
+                Expression::Unary(UnaryExpression {
+                    operand: Box::new(operand),
+                    operator,
+                })
             } else {
-                return Some(left_operand);
+                return None;
             }
-        } else if let Some(_lparen_token) = self.consume_token_if(TokenKind::LParen) {
-            let callee = left_operand;
+        };
+        if self.consume_token_if(TokenKind::LParen).is_some() {
             let mut args = vec![];
             while !matches!(
                 self.tok_look_ahead().map(|t| t.kind),
@@ -55,39 +49,58 @@ impl<'a> Parser<'a> {
                 }
             }
             let end_token = self.consume_token_if(TokenKind::RParen);
-            Some(Expression::FunctionCall(FunctionCallExpression {
-                callee: Box::new(callee),
+            current_exp = Expression::FunctionCall(FunctionCallExpression {
+                callee: Box::new(current_exp),
                 args,
                 end_token,
-            }))
-        } else {
-            return Some(left_operand);
+            });
+        }
+        loop {
+            let operator = self.peek_binary_operator();
+            if operator.is_none() {
+                return Some(current_exp);
+            }
+            let operator = operator.unwrap();
+            let operator_priority = operator.priority();
+            if operator_priority > priority {
+                let operator = self.consume_binary_operator(operator);
+                if let Some(next_term) = self.parse_expression_with_priority(operator_priority) {
+                    current_exp = Expression::Binary(BinaryExpression {
+                        left: Box::new(current_exp),
+                        right: Box::new(next_term),
+                        operator,
+                    });
+                }
+            } else {
+                return Some(current_exp);
+            }
         }
     }
 
-    fn parse_unary_expression(&mut self) -> Option<Expression> {
+    fn consume_unary_operator(&mut self, kind: UnaryOperatorKind) -> UnaryOperator {
+        let op_token = self.tokenizer.next().unwrap();
+        UnaryOperator {
+            token: op_token,
+            kind,
+        }
+    }
+
+    fn consume_binary_operator(&mut self, kind: BinaryOperatorKind) -> BinaryOperator {
+        let op_token = self.tokenizer.next().unwrap();
+        BinaryOperator {
+            token: op_token,
+            kind,
+        }
+    }
+
+    fn peek_unary_operator(&mut self) -> Option<UnaryOperatorKind> {
         self.tok_look_ahead()
-            .and_then(|token| {
-                if let Some(kind) = match token.kind {
-                    TokenKind::Plus => Some(UnaryOperatorKind::Plus),
-                    TokenKind::Minus => Some(UnaryOperatorKind::Negate),
-                    _ => None,
-                } {
-                    Some(UnaryOperator { kind, token })
-                } else {
-                    None
-                }
-            })
-            .and_then(|operator| {
-                self.tokenizer.next();
-                self.parse_expression().map(|operand| {
-                    Expression::Unary(UnaryExpression {
-                        operand: Box::new(operand),
-                        operator,
-                    })
-                })
-            })
-            .or_else(|| self.parse_atom().map(Expression::Atom))
+            .and_then(|token| UnaryOperatorKind::try_from_token_kind(token.kind))
+    }
+
+    fn peek_binary_operator(&mut self) -> Option<BinaryOperatorKind> {
+        self.tok_look_ahead()
+            .and_then(|token| BinaryOperatorKind::try_from_token_kind(token.kind))
     }
 }
 
@@ -118,6 +131,8 @@ pub struct BinaryOperator {
     pub kind: BinaryOperatorKind,
 }
 
+impl BinaryOperatorKind {}
+
 #[derive(Debug)]
 pub enum BinaryOperatorKind {
     Add,
@@ -125,6 +140,9 @@ pub enum BinaryOperatorKind {
 }
 
 impl BinaryOperatorKind {
+    fn priority(&self) -> u8 {
+        1
+    }
     fn try_from_token_kind(token_kind: TokenKind) -> Option<Self> {
         match token_kind {
             TokenKind::Plus => Some(BinaryOperatorKind::Add),
@@ -144,6 +162,19 @@ pub struct UnaryOperator {
 pub enum UnaryOperatorKind {
     Negate,
     Plus,
+}
+
+impl UnaryOperatorKind {
+    fn priority(&self) -> u8 {
+        5
+    }
+    fn try_from_token_kind(token_kind: TokenKind) -> Option<Self> {
+        match token_kind {
+            TokenKind::Plus => Some(UnaryOperatorKind::Plus),
+            TokenKind::Minus => Some(UnaryOperatorKind::Negate),
+            _ => None,
+        }
+    }
 }
 
 impl Operator for UnaryOperator {
@@ -232,6 +263,7 @@ mod tests {
     fn parse_and_check(source: &str, expected_start: usize, expected_end: usize) -> Expression {
         let mut parser = Parser::new(source);
         let expr = parser.parse_expression().expect("No expression found");
+        println!("{expr:?}");
         assert_eq!(expr.span().start.index, expected_start);
         assert_eq!(expr.span().end.index, expected_end);
         expr
@@ -304,6 +336,32 @@ mod tests {
             assert!(
                 matches!(binary_expr.right.as_ref(), Expression::Atom(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
             );
+        } else {
+            panic!("Expected Binary expression, got {:?}", expr.span());
+        }
+    }
+
+    #[test]
+    fn test_parse_expression_binary_add_multiple() {
+        let expr = parse_and_check("1 + 2 + 3", 0, 9);
+        if let Expression::Binary(binary_expr) = expr {
+            assert!(matches!(binary_expr.operator.kind, BinaryOperatorKind::Add));
+            assert_eq!(binary_expr.operator.token.kind, TokenKind::Plus);
+            assert!(
+                matches!(binary_expr.right.as_ref(), Expression::Atom(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+            );
+            if let Expression::Binary(bin_exp) = binary_expr.left.as_ref() {
+                assert!(matches!(bin_exp.operator.kind, BinaryOperatorKind::Add));
+                assert_eq!(bin_exp.operator.token.kind, TokenKind::Plus);
+                assert!(
+                    matches!(bin_exp.left.as_ref(), Expression::Atom(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+                );
+                assert!(
+                    matches!(bin_exp.right.as_ref(), Expression::Atom(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+                );
+            } else {
+                panic!("Expected binary expression on the left of the expression");
+            }
         } else {
             panic!("Expected Binary expression, got {:?}", expr.span());
         }
