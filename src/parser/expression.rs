@@ -61,10 +61,19 @@ impl<'a> Parser<'a> {
                 return Some(current_exp);
             }
             let operator = operator.unwrap();
-            let operator_priority = operator.priority();
-            if operator_priority > priority {
+            let (left_priority, right_priority) = operator.priority();
+            if right_priority >= priority && right_priority > left_priority {
                 let operator = self.consume_binary_operator(operator);
-                if let Some(next_term) = self.parse_expression_with_priority(operator_priority) {
+                if let Some(next_term) = self.parse_expression_with_priority(right_priority) {
+                    current_exp = Expression::Binary(BinaryExpression {
+                        left: Box::new(current_exp),
+                        right: Box::new(next_term),
+                        operator,
+                    });
+                }
+            } else if left_priority > priority {
+                let operator = self.consume_binary_operator(operator);
+                if let Some(next_term) = self.parse_expression_with_priority(left_priority) {
                     current_exp = Expression::Binary(BinaryExpression {
                         left: Box::new(current_exp),
                         right: Box::new(next_term),
@@ -136,17 +145,31 @@ impl BinaryOperatorKind {}
 #[derive(Debug)]
 pub enum BinaryOperatorKind {
     Add,
+    Divide,
+    Exponentiation,
+    Modulo,
+    Multiply,
     Subtract,
 }
 
 impl BinaryOperatorKind {
-    fn priority(&self) -> u8 {
-        1
+    fn priority(&self) -> (u8, u8) {
+        match self {
+            BinaryOperatorKind::Subtract | BinaryOperatorKind::Add => (2, 1),
+            BinaryOperatorKind::Exponentiation => (5, 6),
+            BinaryOperatorKind::Modulo
+            | BinaryOperatorKind::Multiply
+            | BinaryOperatorKind::Divide => (4, 3),
+        }
     }
     fn try_from_token_kind(token_kind: TokenKind) -> Option<Self> {
         match token_kind {
             TokenKind::Plus => Some(BinaryOperatorKind::Add),
             TokenKind::Minus => Some(BinaryOperatorKind::Subtract),
+            TokenKind::Percent => Some(BinaryOperatorKind::Modulo),
+            TokenKind::Star => Some(BinaryOperatorKind::Multiply),
+            TokenKind::StarStar => Some(BinaryOperatorKind::Exponentiation),
+            TokenKind::Slash => Some(BinaryOperatorKind::Divide),
             _ => None,
         }
     }
@@ -513,6 +536,313 @@ mod tests {
             assert!(call_expr.end_token.is_none()); // Expect no closing parenthesis
         } else {
             panic!("Expected FunctionCall expression, got {:?}", expr);
+        }
+    }
+    #[test]
+    fn test_parse_expression_binary_multiply() {
+        let expr = parse_and_check("2 * 3", 0, 5);
+        if let Expression::Binary(binary_expr) = expr {
+            assert!(matches!(
+                binary_expr.operator.kind,
+                BinaryOperatorKind::Multiply
+            ));
+            assert_eq!(binary_expr.operator.token.kind, TokenKind::Star);
+            assert!(
+                matches!(binary_expr.left.as_ref(), Expression::Atom(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+            );
+            assert!(
+                matches!(binary_expr.right.as_ref(), Expression::Atom(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+            );
+        } else {
+            panic!("Expected Binary expression, got {:?}", expr);
+        }
+    }
+
+    #[test]
+    fn test_parse_expression_binary_divide() {
+        let expr = parse_and_check("10 / 2", 0, 6);
+        if let Expression::Binary(binary_expr) = expr {
+            assert!(matches!(
+                binary_expr.operator.kind,
+                BinaryOperatorKind::Divide
+            ));
+            assert_eq!(binary_expr.operator.token.kind, TokenKind::Slash);
+            assert!(
+                matches!(binary_expr.left.as_ref(), Expression::Atom(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+            );
+            assert!(
+                matches!(binary_expr.right.as_ref(), Expression::Atom(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+            );
+        } else {
+            panic!("Expected Binary expression, got {:?}", expr);
+        }
+    }
+
+    #[test]
+    fn test_parse_expression_binary_modulo() {
+        let expr = parse_and_check("10 % 3", 0, 6);
+        if let Expression::Binary(binary_expr) = expr {
+            assert!(matches!(
+                binary_expr.operator.kind,
+                BinaryOperatorKind::Modulo
+            ));
+            assert_eq!(binary_expr.operator.token.kind, TokenKind::Percent);
+            assert!(
+                matches!(binary_expr.left.as_ref(), Expression::Atom(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+            );
+            assert!(
+                matches!(binary_expr.right.as_ref(), Expression::Atom(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+            );
+        } else {
+            panic!("Expected Binary expression, got {:?}", expr);
+        }
+    }
+
+    #[test]
+    fn test_parse_expression_precedence_mul_add() {
+        let expr = parse_and_check("1 + 2 * 3", 0, 9);
+        if let Expression::Binary(add_expr) = expr {
+            assert!(matches!(add_expr.operator.kind, BinaryOperatorKind::Add));
+            assert!(
+                matches!(add_expr.left.as_ref(), Expression::Atom(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+            );
+            if let Expression::Binary(mul_expr) = add_expr.right.as_ref() {
+                assert!(matches!(
+                    mul_expr.operator.kind,
+                    BinaryOperatorKind::Multiply
+                ));
+                assert!(
+                    matches!(mul_expr.left.as_ref(), Expression::Atom(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+                );
+                assert!(
+                    matches!(mul_expr.right.as_ref(), Expression::Atom(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+                );
+            } else {
+                panic!("Expected multiplication on right side of addition");
+            }
+        } else {
+            panic!("Expected Binary expression (addition), got {:?}", expr);
+        }
+    }
+
+    #[test]
+    fn test_parse_expression_precedence_mul_sub() {
+        let expr = parse_and_check("10 - 2 * 3", 0, 10);
+        if let Expression::Binary(sub_expr) = expr {
+            assert!(matches!(
+                sub_expr.operator.kind,
+                BinaryOperatorKind::Subtract
+            ));
+            assert!(
+                matches!(sub_expr.left.as_ref(), Expression::Atom(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+            );
+            if let Expression::Binary(mul_expr) = sub_expr.right.as_ref() {
+                assert!(matches!(
+                    mul_expr.operator.kind,
+                    BinaryOperatorKind::Multiply
+                ));
+                assert!(
+                    matches!(mul_expr.left.as_ref(), Expression::Atom(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+                );
+                assert!(
+                    matches!(mul_expr.right.as_ref(), Expression::Atom(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+                );
+            } else {
+                panic!("Expected multiplication on right side of subtraction");
+            }
+        } else {
+            panic!("Expected Binary expression (subtraction), got {:?}", expr);
+        }
+    }
+
+    #[test]
+    fn test_parse_expression_precedence_unary_mul() {
+        let expr = parse_and_check("-2 * 3", 0, 6);
+        if let Expression::Binary(mul_expr) = expr {
+            assert!(matches!(
+                mul_expr.operator.kind,
+                BinaryOperatorKind::Multiply
+            ));
+            if let Expression::Unary(unary_expr) = mul_expr.left.as_ref() {
+                assert!(matches!(
+                    unary_expr.operator.kind,
+                    UnaryOperatorKind::Negate
+                ));
+                assert!(
+                    matches!(unary_expr.operand.as_ref(), Expression::Atom(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+                );
+            } else {
+                panic!("Expected unary expression on left side of multiplication");
+            }
+            assert!(
+                matches!(mul_expr.right.as_ref(), Expression::Atom(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+            );
+        } else {
+            panic!(
+                "Expected Binary expression (multiplication), got {:?}",
+                expr
+            );
+        }
+    }
+
+    #[test]
+    fn test_parse_expression_precedence_mul_unary() {
+        let expr = parse_and_check("2 * -3", 0, 6);
+        if let Expression::Binary(mul_expr) = expr {
+            assert!(matches!(
+                mul_expr.operator.kind,
+                BinaryOperatorKind::Multiply
+            ));
+            assert!(
+                matches!(mul_expr.left.as_ref(), Expression::Atom(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+            );
+            if let Expression::Unary(unary_expr) = mul_expr.right.as_ref() {
+                assert!(matches!(
+                    unary_expr.operator.kind,
+                    UnaryOperatorKind::Negate
+                ));
+                assert!(
+                    matches!(unary_expr.operand.as_ref(), Expression::Atom(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+                );
+            } else {
+                panic!("Expected unary expression on right side of multiplication");
+            }
+        } else {
+            panic!(
+                "Expected Binary expression (multiplication), got {:?}",
+                expr
+            );
+        }
+    }
+
+    #[test]
+    fn test_parse_expression_associativity_mul_div() {
+        let expr = parse_and_check("10 * 2 / 4", 0, 10);
+        if let Expression::Binary(div_expr) = expr {
+            assert!(matches!(div_expr.operator.kind, BinaryOperatorKind::Divide));
+            assert!(
+                matches!(div_expr.right.as_ref(), Expression::Atom(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+            );
+            if let Expression::Binary(mul_expr) = div_expr.left.as_ref() {
+                assert!(matches!(
+                    mul_expr.operator.kind,
+                    BinaryOperatorKind::Multiply
+                ));
+                assert!(
+                    matches!(mul_expr.left.as_ref(), Expression::Atom(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+                );
+                assert!(
+                    matches!(mul_expr.right.as_ref(), Expression::Atom(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+                );
+            } else {
+                panic!("Expected multiplication on left side of division");
+            }
+        } else {
+            panic!("Expected Binary expression (division), got {:?}", expr);
+        }
+    }
+
+    #[test]
+    fn test_parse_expression_empty_string() {
+        let mut parser = Parser::new("");
+        assert!(parser.parse_expression().is_none());
+    }
+
+    #[test]
+    fn test_parse_expression_only_whitespace() {
+        let mut parser = Parser::new("   ");
+        assert!(parser.parse_expression().is_none());
+    }
+
+    #[test]
+    fn test_parse_expression_missing_left_operand_binary_only() {
+        let mut parser = Parser::new("* 2");
+        assert!(parser.parse_expression().is_none());
+    }
+
+    #[test]
+    fn test_parse_expression_function_call_complex_args() {
+        let expr = parse_and_check("calculate(1 + 2 * 3, -4 / 2)", 0, 28);
+        if let Expression::FunctionCall(call_expr) = expr {
+            assert_eq!(call_expr.args.len(), 2);
+            if let Expression::Binary(arg0) = &call_expr.args[0] {
+                assert!(matches!(arg0.operator.kind, BinaryOperatorKind::Add));
+                if let Expression::Binary(mul_expr) = arg0.right.as_ref() {
+                    assert!(matches!(
+                        mul_expr.operator.kind,
+                        BinaryOperatorKind::Multiply
+                    ));
+                } else {
+                    panic!("Expected multiplication in first arg's right operand");
+                }
+            } else {
+                panic!("Expected binary expression for first arg");
+            }
+            if let Expression::Binary(arg1) = &call_expr.args[1] {
+                assert!(matches!(arg1.operator.kind, BinaryOperatorKind::Divide));
+                if let Expression::Unary(neg_expr) = arg1.left.as_ref() {
+                    assert!(matches!(neg_expr.operator.kind, UnaryOperatorKind::Negate));
+                } else {
+                    panic!("Expected unary expression in second arg's left operand");
+                }
+            } else {
+                panic!("Expected binary expression for second arg");
+            }
+        } else {
+            panic!("Expected FunctionCall expression, got {:?}", expr);
+        }
+    }
+
+    #[test]
+    fn test_parse_expression_binary_exponentiation() {
+        let expr = parse_and_check("2 ** 3", 0, 6);
+        if let Expression::Binary(binary_expr) = expr {
+            assert!(matches!(
+                binary_expr.operator.kind,
+                BinaryOperatorKind::Exponentiation
+            ));
+            assert_eq!(binary_expr.operator.token.kind, TokenKind::StarStar);
+            assert!(
+                matches!(binary_expr.left.as_ref(), Expression::Atom(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+            );
+            assert!(
+                matches!(binary_expr.right.as_ref(), Expression::Atom(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+            );
+        } else {
+            panic!("Expected Binary expression, got {:?}", expr);
+        }
+    }
+
+    #[test]
+    fn test_parse_expression_associativity_exponentiation() {
+        let expr = parse_and_check("2 ** 3 ** 2", 0, 11);
+        if let Expression::Binary(outer_exp_expr) = expr {
+            assert!(matches!(
+                outer_exp_expr.operator.kind,
+                BinaryOperatorKind::Exponentiation
+            ));
+            assert!(
+                matches!(outer_exp_expr.left.as_ref(), Expression::Atom(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+            );
+            if let Expression::Binary(inner_exp_expr) = outer_exp_expr.right.as_ref() {
+                assert!(matches!(
+                    inner_exp_expr.operator.kind,
+                    BinaryOperatorKind::Exponentiation
+                ));
+                assert!(
+                    matches!(inner_exp_expr.left.as_ref(), Expression::Atom(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+                );
+                assert!(
+                    matches!(inner_exp_expr.right.as_ref(), Expression::Atom(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+                );
+            } else {
+                panic!("Expected inner exponentiation on right side of outer exponentiation");
+            }
+        } else {
+            panic!(
+                "Expected Binary expression (exponentiation), got {:?}",
+                expr
+            );
         }
     }
 }
