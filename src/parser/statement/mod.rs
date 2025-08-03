@@ -1,8 +1,10 @@
 mod block;
 mod expression;
+mod function_definition;
 mod if_statement;
 
 use block::BlockStatement;
+use function_definition::FunctionDefinition;
 use if_statement::IfStatement;
 
 use crate::node::Node;
@@ -12,6 +14,7 @@ use super::{Parser, expression::Expression};
 impl<'a> Parser<'a> {
     pub fn parse_statement(&mut self) -> Option<Statement> {
         self.parse_block_statement()
+            .or_else(|| self.parse_function_definition())
             .or_else(|| self.parse_if_statement())
             .or_else(|| self.parse_expression_statement())
     }
@@ -26,7 +29,7 @@ pub struct Statement {
 pub enum StatementKind {
     ExpressionStatement(Expression),
     BlockStatement(BlockStatement),
-    // FunctionDefinition,
+    FunctionDefinition(FunctionDefinition),
     IfStatement(IfStatement),
 }
 
@@ -36,6 +39,7 @@ impl Node for Statement {
             StatementKind::ExpressionStatement(expression) => expression.span(),
             StatementKind::IfStatement(if_stmt) => if_stmt.span(),
             StatementKind::BlockStatement(block_stmt) => block_stmt.span(),
+            StatementKind::FunctionDefinition(def) => def.span(),
         }
     }
 }
