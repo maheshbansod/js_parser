@@ -50,6 +50,8 @@ impl Node for BlockStatement {
 
 #[cfg(test)]
 mod tests {
+    use crate::parser::atom::AtomKind;
+    use crate::parser::expression::{BinaryOperatorKind, Expression};
     use crate::parser::statement::StatementKind;
     use crate::parser::statement::tests::parse_and_check;
     use crate::tokenizer::TokenKind;
@@ -99,6 +101,42 @@ mod tests {
             assert_eq!(block.end_token.unwrap().kind, TokenKind::RBrace);
         } else {
             panic!("Expected BlockStatement, got {:?}", stmt.kind);
+        }
+    }
+
+    #[test]
+    fn test_parse_block_statement_member_access() {
+        let stmt = parse_and_check("{ return this._value; }", 0, 23);
+        if let StatementKind::BlockStatement(block) = stmt.kind {
+            assert_eq!(block.body.len(), 1);
+            let mut statements = block.body;
+            let first_statement = statements.remove(0);
+            if let StatementKind::ReturnStatement(stmt) = first_statement.kind {
+                if let Some(Expression::Binary(exp)) = stmt.value {
+                    let left = exp.left;
+                    let right = exp.right;
+                    let operator = exp.operator;
+                    assert!(matches!(operator.kind, BinaryOperatorKind::MemberAccess));
+                    if let Expression::Atom(atom) = *left {
+                        assert_eq!(atom.kind, AtomKind::This);
+                    } else {
+                        panic!("left is supposed to be this, got {:?}", left);
+                    }
+                    if let Expression::Atom(atom) = *right {
+                        assert_eq!(atom.kind, AtomKind::Identifier);
+                    } else {
+                        panic!("right is supposed to be this, got {:?}", right);
+                    }
+                } else {
+                    panic!("expected retunr value. got: {:?}", stmt);
+                }
+            } else {
+                panic!("supposed to be return. got idk ");
+            }
+            assert_eq!(block.start_token.kind, TokenKind::LBrace);
+            assert_eq!(block.end_token.unwrap().kind, TokenKind::RBrace);
+        } else {
+            panic!("Expected BlockStatement, got smn else");
         }
     }
 }

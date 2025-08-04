@@ -1,22 +1,36 @@
 mod block;
+mod class_definition;
 mod expression;
 mod function_definition;
 mod if_statement;
+mod return_statement;
 
 use block::BlockStatement;
+use class_definition::ClassDefinition;
 use function_definition::FunctionDefinition;
 use if_statement::IfStatement;
+use return_statement::ReturnStatement;
 
-use crate::node::Node;
+use crate::{node::Node, tokenizer::TokenKind};
 
 use super::{Parser, expression::Expression};
 
 impl<'a> Parser<'a> {
     pub fn parse_statement(&mut self) -> Option<Statement> {
-        self.parse_block_statement()
+        self.parse_empty_statements();
+        let statement = self
+            .parse_block_statement()
             .or_else(|| self.parse_function_definition())
+            .or_else(|| self.parse_return_statement())
+            .or_else(|| self.parse_class_definition())
             .or_else(|| self.parse_if_statement())
-            .or_else(|| self.parse_expression_statement())
+            .or_else(|| self.parse_expression_statement());
+        self.parse_empty_statements();
+        statement
+    }
+
+    fn parse_empty_statements(&mut self) {
+        while self.consume_token_if(TokenKind::Semicolon).is_some() {}
     }
 }
 
@@ -30,7 +44,9 @@ pub enum StatementKind {
     ExpressionStatement(Expression),
     BlockStatement(BlockStatement),
     FunctionDefinition(FunctionDefinition),
+    ClassDefinition(ClassDefinition),
     IfStatement(IfStatement),
+    ReturnStatement(ReturnStatement),
 }
 
 impl Node for Statement {
@@ -40,6 +56,8 @@ impl Node for Statement {
             StatementKind::IfStatement(if_stmt) => if_stmt.span(),
             StatementKind::BlockStatement(block_stmt) => block_stmt.span(),
             StatementKind::FunctionDefinition(def) => def.span(),
+            StatementKind::ClassDefinition(class_def) => class_def.span(),
+            StatementKind::ReturnStatement(ret_stmt) => ret_stmt.span(),
         }
     }
 }

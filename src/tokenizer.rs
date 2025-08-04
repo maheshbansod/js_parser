@@ -82,10 +82,11 @@ impl<'a> Tokenizer<'a> {
     }
 
     fn consume_identifier(&mut self) -> Option<Token> {
-        self.consume_alphanumeric().map(|span| Token {
-            span,
-            kind: TokenKind::Identifier,
-        })
+        self.consume_till(|c| !c.is_alphanumeric() && c != '_')
+            .map(|span| Token {
+                span,
+                kind: TokenKind::Identifier,
+            })
     }
 
     fn consume_operator(&mut self) -> Option<Token> {
@@ -236,6 +237,7 @@ pub struct Position {
 pub enum TokenKind {
     Class,
     Const,
+    Constructor,
     Else,
     If,
     Let,
@@ -266,6 +268,8 @@ pub enum TokenKind {
     Async,
     Await,
     Yield,
+    Get,
+    Set,
     Debugger,
     With,
     Extends,
@@ -430,6 +434,15 @@ mod tests {
         assert_eq!(tokenizer.next().unwrap().kind, TokenKind::EqEqEq); // Should be '===' not '=' then '=='
         assert_eq!(tokenizer.next().unwrap().kind, TokenKind::Identifier); // "b"
         assert!(tokenizer.next().is_none()); // Eof
+    }
+
+    #[test]
+    fn test_tokenizer_keyword_underscore_identifier() {
+        let source = "_value";
+        let mut tokenizer = Tokenizer::new(source);
+
+        assert_eq!(tokenizer.next().unwrap().kind, TokenKind::Identifier);
+        assert!(tokenizer.next().is_none());
     }
 
     #[test]

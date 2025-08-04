@@ -60,10 +60,10 @@ pub struct FunctionDefinition {
 }
 
 impl FunctionDefinition {
-    fn is_async(&self) -> bool {
+    pub fn is_async(&self) -> bool {
         self.async_token.is_some()
     }
-    fn is_generator(&self) -> bool {
+    pub fn is_generator(&self) -> bool {
         self.generator_token.is_some()
     }
 }

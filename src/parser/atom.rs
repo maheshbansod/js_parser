@@ -13,6 +13,8 @@ impl<'a> Parser<'a> {
                 TokenKind::NumberLiteral => Some(AtomKind::NumberLiteral),
                 TokenKind::StringLiteral => Some(AtomKind::StringLiteral),
                 TokenKind::BooleanLiteral => Some(AtomKind::BooleanLiteral),
+                TokenKind::This => Some(AtomKind::This),
+                TokenKind::Super => Some(AtomKind::Super),
                 _ => None,
             })
             .map(|atom_kind| {
@@ -33,12 +35,14 @@ pub struct Atom {
     pub kind: AtomKind,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum AtomKind {
     Identifier,
     NumberLiteral,
     StringLiteral,
     BooleanLiteral,
+    This,
+    Super,
 }
 
 impl Node for Atom {

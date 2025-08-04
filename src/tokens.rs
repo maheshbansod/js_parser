@@ -7,8 +7,11 @@ pub fn keywords_map() -> &'static HashMap<&'static str, TokenKind> {
     KEYWORDS.get_or_init(|| {
         let mut map = HashMap::new();
         map.insert("class", TokenKind::Class);
+        map.insert("constructor", TokenKind::Constructor);
         map.insert("const", TokenKind::Const);
         map.insert("else", TokenKind::Else);
+        map.insert("extends", TokenKind::Extends);
+        map.insert("get", TokenKind::Get);
         map.insert("if", TokenKind::If);
         map.insert("let", TokenKind::Let);
         map.insert("function", TokenKind::Function);
@@ -32,6 +35,7 @@ pub fn keywords_map() -> &'static HashMap<&'static str, TokenKind> {
         map.insert("instanceof", TokenKind::InstanceOf);
         map.insert("void", TokenKind::Void);
         map.insert("this", TokenKind::This);
+        map.insert("set", TokenKind::Set);
         map.insert("super", TokenKind::Super);
         map.insert("import", TokenKind::Import);
         map.insert("export", TokenKind::Export);

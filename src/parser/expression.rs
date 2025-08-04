@@ -145,8 +145,10 @@ impl BinaryOperatorKind {}
 #[derive(Debug)]
 pub enum BinaryOperatorKind {
     Add,
+    Assign,
     Divide,
     Exponentiation,
+    MemberAccess,
     Modulo,
     Multiply,
     Subtract,
@@ -155,11 +157,13 @@ pub enum BinaryOperatorKind {
 impl BinaryOperatorKind {
     fn priority(&self) -> (u8, u8) {
         match self {
-            BinaryOperatorKind::Subtract | BinaryOperatorKind::Add => (2, 1),
-            BinaryOperatorKind::Exponentiation => (5, 6),
+            BinaryOperatorKind::Subtract | BinaryOperatorKind::Add => (4, 3),
+            BinaryOperatorKind::Exponentiation => (7, 8),
+            BinaryOperatorKind::Assign => (1, 2),
             BinaryOperatorKind::Modulo
             | BinaryOperatorKind::Multiply
-            | BinaryOperatorKind::Divide => (4, 3),
+            | BinaryOperatorKind::Divide => (6, 5),
+            Self::MemberAccess => (10, 9),
         }
     }
     fn try_from_token_kind(token_kind: TokenKind) -> Option<Self> {
@@ -170,6 +174,8 @@ impl BinaryOperatorKind {
             TokenKind::Star => Some(BinaryOperatorKind::Multiply),
             TokenKind::StarStar => Some(BinaryOperatorKind::Exponentiation),
             TokenKind::Slash => Some(BinaryOperatorKind::Divide),
+            TokenKind::Dot => Some(BinaryOperatorKind::MemberAccess),
+            TokenKind::Eq => Some(BinaryOperatorKind::Assign),
             _ => None,
         }
     }
@@ -189,7 +195,7 @@ pub enum UnaryOperatorKind {
 
 impl UnaryOperatorKind {
     fn priority(&self) -> u8 {
-        5
+        15
     }
     fn try_from_token_kind(token_kind: TokenKind) -> Option<Self> {
         match token_kind {
@@ -843,6 +849,44 @@ mod tests {
                 "Expected Binary expression (exponentiation), got {:?}",
                 expr
             );
+        }
+    }
+    #[test]
+    fn test_parse_expression_member_access_assignment() {
+        let expr = parse_and_check("this.a = a", 0, 10);
+        if let Expression::Binary(assign_expr) = expr {
+            assert!(matches!(
+                assign_expr.operator.kind,
+                BinaryOperatorKind::Assign
+            ));
+            assert_eq!(assign_expr.operator.token.kind, TokenKind::Eq);
+
+            // Check the left side of the assignment (this.a)
+            if let Expression::Binary(member_access_expr) = assign_expr.left.as_ref() {
+                assert!(matches!(
+                    member_access_expr.operator.kind,
+                    BinaryOperatorKind::MemberAccess
+                ));
+                assert_eq!(member_access_expr.operator.token.kind, TokenKind::Dot);
+                assert!(
+                    matches!(member_access_expr.left.as_ref(), Expression::Atom(atom) if matches!(atom.kind, AtomKind::This))
+                ); // "this"
+                assert!(
+                    matches!(member_access_expr.right.as_ref(), Expression::Atom(atom) if matches!(atom.kind, AtomKind::Identifier))
+                ); // "a"
+            } else {
+                panic!(
+                    "Expected Binary expression (MemberAccess) on left side of assignment, got {:?}",
+                    assign_expr.left
+                );
+            }
+
+            // Check the right side of the assignment (a)
+            assert!(
+                matches!(assign_expr.right.as_ref(), Expression::Atom(atom) if matches!(atom.kind, AtomKind::Identifier))
+            ); // "a"
+        } else {
+            panic!("Expected Binary expression (Assignment), got {:?}", expr);
         }
     }
 }
