@@ -6,6 +6,8 @@ use crate::{
 
 use super::{Statement, StatementKind, block::BlockStatement};
 
+pub type Parameter = Token;
+
 impl<'a> Parser<'a> {
     pub fn parse_function_definition(&mut self) -> Option<Statement> {
         // todo: is async should be on an outer level and probably passed to this function
@@ -15,18 +17,7 @@ impl<'a> Parser<'a> {
         let generator_token = self.consume_token_if(TokenKind::Star);
         let name = self.consume_token_if(TokenKind::Identifier);
         self.consume_token_if(TokenKind::LParen);
-        let mut params = vec![];
-        while !matches!(
-            self.tok_look_ahead().map(|t| t.kind),
-            Some(TokenKind::RParen)
-        ) {
-            if let Some(token) = self.consume_token_if(TokenKind::Identifier) {
-                params.push(token);
-                self.consume_token_if(TokenKind::Comma);
-            } else {
-                break;
-            }
-        }
+        let params = self.parse_parameters();
         self.consume_token_if(TokenKind::RParen);
         let block = self.parse_block_statement()?;
         if let StatementKind::BlockStatement(block) = block.kind {
@@ -43,6 +34,22 @@ impl<'a> Parser<'a> {
         } else {
             None
         }
+    }
+
+    pub fn parse_parameters(&mut self) -> Vec<Parameter> {
+        let mut params = vec![];
+        while !matches!(
+            self.tok_look_ahead().map(|t| t.kind),
+            Some(TokenKind::RParen)
+        ) {
+            if let Some(token) = self.consume_token_if(TokenKind::Identifier) {
+                params.push(token);
+                self.consume_token_if(TokenKind::Comma);
+            } else {
+                break;
+            }
+        }
+        params
     }
 }
 

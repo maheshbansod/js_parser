@@ -5,10 +5,7 @@ use crate::{
     tokenizer::{Span, TokenKind},
 };
 
-use super::{Statement, block::BlockStatement};
-
-// todo: use function parameter which will be imported from functin definition module
-type Parameter = Token;
+use super::{Statement, block::BlockStatement, function_definition::Parameter};
 
 impl<'a> Parser<'a> {
     pub fn parse_class_definition(&mut self) -> Option<Statement> {
@@ -73,18 +70,7 @@ impl<'a> Parser<'a> {
                     value,
                 }));
             } else if self.consume_token_if(TokenKind::LParen).is_some() {
-                let mut parameters = vec![];
-                while !matches!(
-                    self.tok_look_ahead().map(|t| t.kind),
-                    Some(TokenKind::RParen)
-                ) {
-                    if let Some(param) = self.consume_token_if(TokenKind::Identifier) {
-                        parameters.push(param);
-                        self.consume_token_if(TokenKind::Comma);
-                    } else {
-                        break;
-                    }
-                }
+                let parameters = self.parse_parameters();
                 self.consume_token_if(TokenKind::RParen);
                 if let Some(block) = self.parse_block_statement() {
                     if let StatementKind::BlockStatement(block) = block.kind {
@@ -114,18 +100,7 @@ impl<'a> Parser<'a> {
             }
         } else if let Some(_constructor_token) = self.consume_token_if(TokenKind::Constructor) {
             self.consume_token_if(TokenKind::LParen)?;
-            let mut parameters = vec![];
-            while !matches!(
-                self.tok_look_ahead().map(|t| t.kind),
-                Some(TokenKind::RParen)
-            ) {
-                if let Some(param) = self.consume_token_if(TokenKind::Identifier) {
-                    parameters.push(param);
-                    self.consume_token_if(TokenKind::Comma);
-                } else {
-                    break;
-                }
-            }
+            let parameters = self.parse_parameters();
             self.consume_token_if(TokenKind::RParen);
             if let Some(block) = self.parse_block_statement() {
                 if let StatementKind::BlockStatement(block) = block.kind {
@@ -383,4 +358,3 @@ mod tests {
         assert!(matches!(class_def.members[4], ClassMember::Property(_)));
     }
 }
-
