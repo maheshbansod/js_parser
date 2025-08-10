@@ -1,5 +1,5 @@
 use crate::{
-    node::Node, parser::{atom::Atom, expression::{function_definition::FunctionDefinition, Expression}}, tokenizer::TokenKind, Parser
+    node::Node, parser::{atom::Atom, expression::{function_definition::FunctionDefinition, Expression}}, tokenizer::{Span, TokenKind}, Parser, Token
 };
 
 impl<'a> Parser<'a> {
@@ -12,8 +12,12 @@ impl<'a> Parser<'a> {
                 if token.kind == TokenKind::LParen {
                     self.tokenizer.next();
                     let expr = self.parse_expression();
-                    self.consume_token_if(TokenKind::RParen);
-                    expr.map(|expr| Term::BracketedExpression(Box::new(expr)))
+                    let right_paren = self.consume_token_if(TokenKind::RParen);
+                    expr.map(|expr| Term::BracketedExpression(BracketedExpression {
+                        left_paren: token,
+                        right_paren,
+                        expression: Box::new(expr),
+                    }))
                 } else {
                     None
                 }
@@ -27,7 +31,7 @@ pub enum Term {
     Atom(Atom),
     FunctionDefinition(FunctionDefinition),
     /// Bracketed expression, e.g. (a + b)
-    BracketedExpression(Box<Expression>),
+    BracketedExpression(BracketedExpression),
 }
 
 impl Node for Term {
@@ -35,9 +39,17 @@ impl Node for Term {
         match self {
             Term::Atom(atom) => atom.span(),
             Term::FunctionDefinition(func_def) => func_def.span(),
-            Term::BracketedExpression(expr) => expr.span(),
+            Term::BracketedExpression(expr) => expr.right_paren.as_ref().map(|right_paren| Span::concat(expr.left_paren.span,right_paren.span)).unwrap_or(expr.left_paren.span),
         }
     }
+}
+
+#[derive(Debug)]
+pub struct BracketedExpression {
+    pub left_paren: Token,
+    pub right_paren: Option<Token>,
+    /// The expression inside the brackets
+    pub expression: Box<Expression>,
 }
 
 #[cfg(test)]
@@ -52,7 +64,7 @@ mod tests {
         let term = parser.parse_term().expect("No term found");
         match term {
             Term::BracketedExpression(expr) => {
-                if let Expression::Binary(bin_expr) = expr.as_ref() {
+                if let Expression::Binary(bin_expr) = expr.expression.as_ref() {
                     assert!(
                         matches!(bin_expr.left.as_ref(), Expression::Term(Term::Atom(_)))
                     );
