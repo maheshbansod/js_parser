@@ -14,11 +14,11 @@ impl<'a> Parser<'a> {
             .map(Term::Atom)
             .or_else(|| {
                 self.parse_function_definition()
-                    .map(Term::FunctionDefinition)
+                    .map(|f| Term::FunctionDefinition(Box::new(f)))
             })
             .or_else(|| {
                 self.tok_look_ahead()
-                    .map(|token| {
+                    .and_then(|token| {
                         if token.kind == TokenKind::LParen {
                             self.tokenizer.next();
                             let expr = self.parse_expression();
@@ -34,7 +34,6 @@ impl<'a> Parser<'a> {
                             None
                         }
                     })
-                    .flatten()
             })
     }
 }
@@ -42,7 +41,7 @@ impl<'a> Parser<'a> {
 #[derive(Debug)]
 pub enum Term {
     Atom(Atom),
-    FunctionDefinition(FunctionDefinition),
+    FunctionDefinition(Box<FunctionDefinition>),
     /// Bracketed expression, e.g. (a + b)
     BracketedExpression(BracketedExpression),
 }

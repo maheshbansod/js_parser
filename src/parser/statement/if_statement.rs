@@ -16,7 +16,7 @@ impl<'a> Parser<'a> {
         let consequent = self.parse_statement()?;
         let alternate = self
             .consume_token_if(TokenKind::Else)
-            .and_then(|_| self.parse_statement().map(|s| Box::new(s)));
+            .and_then(|_| self.parse_statement().map(Box::new));
         Some(Statement {
             kind: StatementKind::IfStatement(IfStatement {
                 start_token,
@@ -44,7 +44,7 @@ impl Node for IfStatement {
 #[derive(Debug)]
 pub struct IfStatement {
     start_token: Token,
-    condition: Expression,
+    pub condition: Expression,
     consequent: Box<Statement>,
     alternate: Option<Box<Statement>>,
 }

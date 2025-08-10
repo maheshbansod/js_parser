@@ -86,22 +86,18 @@ impl<'a> Tokenizer<'a> {
                     let _end_quote = self.consume_string(quote_str);
                     let end = self.current_position();
                     Span {
-                        start: start.clone(),
+                        start,
                         end,
                     }
                 })
                 .unwrap_or_else(|| Span {
-                    start: start.clone(),
+                    start,
                     end: self.current_position(),
                 });
             Some((literal_span, TokenKind::StringLiteral))
         } else if let Some(span) = self.consume_word("true") {
             Some((span, TokenKind::BooleanLiteral))
-        } else if let Some(span) = self.consume_word("false") {
-            Some((span, TokenKind::BooleanLiteral))
-        } else {
-            None
-        })
+        } else { self.consume_word("false").map(|span| (span, TokenKind::BooleanLiteral)) })
         .map(|(span, token_kind)| Token {
             span,
             kind: token_kind,

@@ -121,10 +121,10 @@ impl<'a> Parser<'a> {
 #[derive(Debug)]
 pub struct ClassDefinition {
     class_token: Token,
-    class_name: Option<Token>,
-    extends_token: Option<Token>,
-    super_class_name: Option<Token>,
-    members: Vec<ClassMember>,
+    pub class_name: Option<Token>,
+    pub extends_token: Option<Token>,
+    pub super_class_name: Option<Token>,
+    pub members: Vec<ClassMember>,
     end_token: Option<Token>, // Changed to Option
 }
 
@@ -148,46 +148,44 @@ pub enum ClassMember {
 
 #[derive(Debug)]
 pub struct ConstructorDefinition {
-    parameters: Vec<Parameter>,
-    block: BlockStatement,
+    pub parameters: Vec<Parameter>,
+    pub block: BlockStatement,
 }
 
 #[derive(Debug)]
 pub struct MethodDefinition {
-    async_token: Option<Token>,
-    generator_token: Option<Token>,
-    name: Token,
-    parameters: Vec<Parameter>,
-    body: BlockStatement,
+    pub async_token: Option<Token>,
+    pub generator_token: Option<Token>,
+    pub name: Token,
+    pub parameters: Vec<Parameter>,
+    pub body: BlockStatement,
 }
 
 #[derive(Debug)]
 pub struct PropertyDefinition {
-    name: Token,
-    value: Option<Expression>,
+    pub name: Token,
+    pub value: Option<Expression>,
 }
 
 #[derive(Debug)]
 pub struct SetterDefinition {
-    set_token: Token,
-    name: Token,
-    body: BlockStatement,
+    pub set_token: Token,
+    pub name: Token,
+    pub body: BlockStatement,
 }
 
 #[derive(Debug)]
 pub struct GetterDefinition {
-    get_token: Token,
-    name: Token,
-    body: BlockStatement,
+    pub get_token: Token,
+    pub name: Token,
+    pub body: BlockStatement,
 }
 
 #[cfg(test)]
 mod tests {
     use crate::parser::statement::StatementKind;
-    use crate::parser::statement::block::BlockStatement;
     use crate::parser::statement::class_definition::{
-        ClassDefinition, ClassMember, ConstructorDefinition, GetterDefinition, MethodDefinition,
-        PropertyDefinition, SetterDefinition,
+        ClassDefinition, ClassMember,
     };
     use crate::parser::statement::tests::parse_and_check;
     use crate::tokenizer::TokenKind; // Needed for method/constructor bodies

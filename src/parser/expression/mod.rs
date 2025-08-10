@@ -14,7 +14,6 @@ use super::Parser;
  * Pratt parsing gang lets go
  *
  * */
-
 impl<'a> Parser<'a> {
     pub fn parse_expression(&mut self) -> Option<Expression> {
         self.parse_expression_with_priority(0)
