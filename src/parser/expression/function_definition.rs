@@ -215,4 +215,31 @@ mod tests {
             panic!("Expected FunctionDefinition, got {:?}", stmt);
         }
     }
+    
+    #[test]
+    fn test_parse_function_definition_assignment() {
+        let source = "x = function() {}";
+        let expr = parse_and_check(source, 0, 17);
+        if let Expression::Binary(binary_expr) = expr {
+            // Left side should be identifier 'x'
+            if let Expression::Term(Term::Atom(atom)) = binary_expr.left.as_ref() {
+                assert_eq!(atom.span.source(source), "x");
+            } else {
+                panic!("Expected left side to be identifier, got {:?}", binary_expr.left);
+            }
+            // Right side should be function definition with no name
+            if let Expression::Term(Term::FunctionDefinition(func_def)) = binary_expr.right.as_ref() {
+                assert!(!func_def.is_async());
+                assert!(!func_def.is_generator());
+                assert_eq!(func_def.function_token.kind, TokenKind::Function);
+                assert!(func_def.name.is_none());
+                assert!(func_def.parameters.is_empty());
+                assert!(func_def.body.body.is_empty());
+            } else {
+                panic!("Expected right side to be FunctionDefinition, got {:?}", binary_expr.right);
+            }
+        } else {
+            panic!("Expected BinaryExpression, got {:?}", expr);
+        }
+    }
 }
