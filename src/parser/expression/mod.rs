@@ -1,3 +1,4 @@
+pub mod function_definition;
 pub mod term;
 
 use crate::{
@@ -7,7 +8,7 @@ use crate::{
     tokenizer::{Span, TokenKind},
 };
 
-use super::{Parser, atom::Atom};
+use super::{Parser};
 
 /**
  * Pratt parsing gang lets go
@@ -21,9 +22,9 @@ impl<'a> Parser<'a> {
 
     /// parses expresions with given priority operator or higher
     fn parse_expression_with_priority(&mut self, priority: u8) -> Option<Expression> {
-        let atom = self.parse_atom();
-        let mut current_exp = if let Some(atom) = atom {
-            Expression::Term(Term::Atom(atom))
+        let term = self.parse_term();
+        let mut current_exp = if let Some(term) = term {
+            Expression::Term(term)
         } else {
             // could be an operator next
             if let Some(operator) = self.peek_unary_operator() {
@@ -240,6 +241,7 @@ impl Node for Expression {
             Expression::Binary(binary_expression) => binary_expression.span(),
             Expression::Unary(unary_expression) => unary_expression.span(),
             Expression::Term(Term::Atom(atom)) => atom.span(),
+            Expression::Term(Term::FunctionDefinition(function_call)) => function_call.span(),
             Expression::FunctionCall(function_call) => function_call.span(),
         }
     }
@@ -293,7 +295,7 @@ mod tests {
     use crate::tokenizer::TokenKind;
 
     // Helper to create a parser and parse an expression, checking its span
-    fn parse_and_check(source: &str, expected_start: usize, expected_end: usize) -> Expression {
+    pub fn parse_and_check(source: &str, expected_start: usize, expected_end: usize) -> Expression {
         let mut parser = Parser::new(source);
         let expr = parser.parse_expression().expect("No expression found");
         println!("{expr:?}");

@@ -1,13 +1,11 @@
 mod block;
 mod class_definition;
 mod expression;
-mod function_definition;
 mod if_statement;
 mod return_statement;
 
-use block::BlockStatement;
+pub use block::BlockStatement;
 use class_definition::ClassDefinition;
-use function_definition::FunctionDefinition;
 use if_statement::IfStatement;
 use return_statement::ReturnStatement;
 
@@ -20,7 +18,6 @@ impl<'a> Parser<'a> {
         self.parse_empty_statements();
         let statement = self
             .parse_block_statement()
-            .or_else(|| self.parse_function_definition())
             .or_else(|| self.parse_return_statement())
             .or_else(|| self.parse_class_definition())
             .or_else(|| self.parse_if_statement())
@@ -36,14 +33,13 @@ impl<'a> Parser<'a> {
 
 #[derive(Debug)]
 pub struct Statement {
-    kind: StatementKind,
+    pub kind: StatementKind,
 }
 
 #[derive(Debug)]
 pub enum StatementKind {
     ExpressionStatement(Expression),
     BlockStatement(BlockStatement),
-    FunctionDefinition(FunctionDefinition),
     ClassDefinition(ClassDefinition),
     IfStatement(IfStatement),
     ReturnStatement(ReturnStatement),
@@ -55,7 +51,6 @@ impl Node for Statement {
             StatementKind::ExpressionStatement(expression) => expression.span(),
             StatementKind::IfStatement(if_stmt) => if_stmt.span(),
             StatementKind::BlockStatement(block_stmt) => block_stmt.span(),
-            StatementKind::FunctionDefinition(def) => def.span(),
             StatementKind::ClassDefinition(class_def) => class_def.span(),
             StatementKind::ReturnStatement(ret_stmt) => ret_stmt.span(),
         }

@@ -1,11 +1,8 @@
 use crate::{
-    Parser, Token,
-    node::Node,
-    parser::{expression::Expression, statement::StatementKind},
-    tokenizer::{Span, TokenKind},
+    node::Node, parser::{expression::{function_definition::Parameter, Expression}, statement::StatementKind}, tokenizer::{Span, TokenKind}, Parser, Token
 };
 
-use super::{Statement, block::BlockStatement, function_definition::Parameter};
+use super::{Statement, block::BlockStatement};
 
 impl<'a> Parser<'a> {
     pub fn parse_class_definition(&mut self) -> Option<Statement> {
