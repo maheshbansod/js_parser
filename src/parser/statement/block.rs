@@ -117,12 +117,12 @@ mod tests {
                     let right = exp.right;
                     let operator = exp.operator;
                     assert!(matches!(operator.kind, BinaryOperatorKind::MemberAccess));
-                    if let Expression::Atom(atom) = *left {
+                    if let Expression::Term(atom) = *left {
                         assert_eq!(atom.kind, AtomKind::This);
                     } else {
                         panic!("left is supposed to be this, got {:?}", left);
                     }
-                    if let Expression::Atom(atom) = *right {
+                    if let Expression::Term(atom) = *right {
                         assert_eq!(atom.kind, AtomKind::Identifier);
                     } else {
                         panic!("right is supposed to be this, got {:?}", right);
