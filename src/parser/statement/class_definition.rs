@@ -35,7 +35,7 @@ impl<'a> Parser<'a> {
                 break;
             }
         }
-        let end_token = self.consume_token_if(TokenKind::RBrace)?;
+        let end_token = self.consume_token_if(TokenKind::RBrace); // Now optional
         Some(Statement {
             kind: StatementKind::ClassDefinition(ClassDefinition {
                 class_token,
@@ -122,12 +122,15 @@ pub struct ClassDefinition {
     extends_token: Option<Token>,
     super_class_name: Option<Token>,
     members: Vec<ClassMember>,
-    end_token: Token,
+    end_token: Option<Token>, // Changed to Option
 }
 
 impl Node for ClassDefinition {
     fn span(&self) -> crate::tokenizer::Span {
-        Span::concat(self.class_token.span, self.end_token.span)
+        match &self.end_token {
+            Some(end_token) => Span::concat(self.class_token.span, end_token.span),
+            None => self.class_token.span,
+        }
     }
 }
 
@@ -207,6 +210,8 @@ mod tests {
         assert!(class_def.extends_token.is_none());
         assert!(class_def.super_class_name.is_none());
         assert!(class_def.members.is_empty());
+        assert!(class_def.end_token.is_some());
+        assert_eq!(class_def.end_token.as_ref().unwrap().kind, TokenKind::RBrace);
     }
 
     #[test]
@@ -226,6 +231,8 @@ mod tests {
             "BaseClass"
         );
         assert!(class_def.members.is_empty());
+        assert!(class_def.end_token.is_some());
+        assert_eq!(class_def.end_token.as_ref().unwrap().kind, TokenKind::RBrace);
     }
 
     #[test]
@@ -235,10 +242,11 @@ mod tests {
         let class_def = get_class_def(stmt);
 
         assert_eq!(class_def.members.len(), 1);
+        assert!(class_def.end_token.is_some());
         if let ClassMember::Constructor(ctor) = &class_def.members[0] {
             assert_eq!(ctor.parameters.len(), 1);
             assert_eq!(ctor.parameters[0].span.source(source), "a");
-            assert_eq!(ctor.block.body.len(), 1); // Assuming `this.a = a;` parses as one statement
+            assert_eq!(ctor.block.body.len(), 1);
         } else {
             panic!("Expected Constructor, got {:?}", class_def.members[0]);
         }
@@ -251,13 +259,14 @@ mod tests {
         let class_def = get_class_def(stmt);
 
         assert_eq!(class_def.members.len(), 1);
+        assert!(class_def.end_token.is_some());
         if let ClassMember::Method(method) = &class_def.members[0] {
             assert_eq!(method.name.span.source(source), "myMethod");
             assert_eq!(method.parameters.len(), 1);
             assert_eq!(method.parameters[0].span.source(source), "x");
             assert!(!method.async_token.is_some());
             assert!(!method.generator_token.is_some());
-            assert_eq!(method.body.body.len(), 1); // Assuming `return x;` parses as one statement
+            assert_eq!(method.body.body.len(), 1);
         } else {
             panic!("Expected Method, got {:?}", class_def.members[0]);
         }
@@ -270,6 +279,7 @@ mod tests {
         let class_def = get_class_def(stmt);
 
         assert_eq!(class_def.members.len(), 1);
+        assert!(class_def.end_token.is_some());
         if let ClassMember::Method(method) = &class_def.members[0] {
             assert_eq!(method.name.span.source(source), "myAsyncMethod");
             assert!(method.async_token.is_some());
@@ -286,6 +296,7 @@ mod tests {
         let class_def = get_class_def(stmt);
 
         assert_eq!(class_def.members.len(), 1);
+        assert!(class_def.end_token.is_some());
         if let ClassMember::Method(method) = &class_def.members[0] {
             assert_eq!(method.name.span.source(source), "myGeneratorMethod");
             assert!(!method.async_token.is_some());
@@ -302,9 +313,10 @@ mod tests {
         let class_def = get_class_def(stmt);
 
         assert_eq!(class_def.members.len(), 1);
+        assert!(class_def.end_token.is_some());
         if let ClassMember::Property(prop) = &class_def.members[0] {
             assert_eq!(prop.name.span.source(source), "myField");
-            assert!(prop.value.is_some()); // Check if value is parsed
+            assert!(prop.value.is_some());
         } else {
             panic!("Expected Property, got {:?}", class_def.members[0]);
         }
@@ -317,6 +329,7 @@ mod tests {
         let class_def = get_class_def(stmt);
 
         assert_eq!(class_def.members.len(), 1);
+        assert!(class_def.end_token.is_some());
         if let ClassMember::Getter(getter) = &class_def.members[0] {
             assert_eq!(getter.name.span.source(source), "value");
             assert_eq!(getter.get_token.kind, TokenKind::Get);
@@ -333,6 +346,7 @@ mod tests {
         let class_def = get_class_def(stmt);
 
         assert_eq!(class_def.members.len(), 1);
+        assert!(class_def.end_token.is_some());
         if let ClassMember::Setter(setter) = &class_def.members[0] {
             assert_eq!(setter.name.span.source(source), "value");
             assert_eq!(setter.set_token.kind, TokenKind::Set);
@@ -348,9 +362,9 @@ mod tests {
         let stmt = parse_and_check(source, 0, 90);
         let class_def = get_class_def(stmt);
 
-        assert_eq!(class_def.members.len(), 5); // Constructor, Method, Getter, Setter, Property
+        assert_eq!(class_def.members.len(), 5);
+        assert!(class_def.end_token.is_some());
 
-        // Check types of members (order might vary based on parsing logic, but usually declaration order)
         assert!(matches!(class_def.members[0], ClassMember::Constructor(_)));
         assert!(matches!(class_def.members[1], ClassMember::Method(_)));
         assert!(matches!(class_def.members[2], ClassMember::Getter(_)));
