@@ -89,6 +89,8 @@ impl Node for FunctionDefinition {
 
 #[cfg(test)]
 mod tests {
+    use crate::node::Node;
+    use crate::parser::expression::{BinaryExpression, BinaryOperatorKind, Expression};
     use crate::parser::statement::StatementKind;
     use crate::parser::statement::tests::parse_and_check;
     use crate::tokenizer::TokenKind;
@@ -196,6 +198,22 @@ mod tests {
             assert!(func_def.name.is_some());
             assert_eq!(func_def.name.unwrap().span.source(source), "agen");
             assert!(func_def.parameters.is_empty());
+        } else {
+            panic!("Expected FunctionDefinition, got {:?}", stmt.kind);
+        }
+    }
+
+    #[test]
+    fn test_parse_function_definition_no_name() {
+        let source = "function() {}";
+        let stmt = parse_and_check(source, 0, 13);
+        if let StatementKind::FunctionDefinition(func_def) = stmt.kind {
+            assert!(!func_def.is_async());
+            assert!(!func_def.is_generator());
+            assert_eq!(func_def.function_token.kind, TokenKind::Function);
+            assert!(func_def.name.is_none());
+            assert!(func_def.parameters.is_empty());
+            assert!(func_def.body.body.is_empty());
         } else {
             panic!("Expected FunctionDefinition, got {:?}", stmt.kind);
         }
