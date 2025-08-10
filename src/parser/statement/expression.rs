@@ -19,7 +19,7 @@ impl<'a> Parser<'a> {
 mod tests {
     use crate::parser::{
         atom::AtomKind,
-        expression::{BinaryOperatorKind, Expression, UnaryOperatorKind},
+        expression::{BinaryOperatorKind, Expression, UnaryOperatorKind, term::Term},
         statement::tests::parse_and_check,
     };
 
@@ -30,7 +30,7 @@ mod tests {
         let stmt = parse_and_check("myVar;", 0, 5); // Span of "myVar"
         if let StatementKind::ExpressionStatement(expr) = stmt.kind {
             assert!(
-                matches!(expr, Expression::Term(atom) if matches!(atom.kind, AtomKind::Identifier))
+                matches!(expr, Expression::Term(Term::Atom( atom)) if matches!(atom.kind, AtomKind::Identifier))
             );
         } else {
             panic!("Expected ExpressionStatement, got {:?}", stmt.kind);
@@ -42,7 +42,7 @@ mod tests {
         let stmt = parse_and_check("123;", 0, 3); // Span of "123"
         if let StatementKind::ExpressionStatement(expr) = stmt.kind {
             assert!(
-                matches!(expr, Expression::Term(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+                matches!(expr, Expression::Term(Term::Atom( atom)) if matches!(atom.kind, AtomKind::NumberLiteral))
             );
         } else {
             panic!("Expected ExpressionStatement, got {:?}", stmt.kind);
@@ -56,10 +56,10 @@ mod tests {
             if let Expression::Binary(binary_expr) = expr {
                 assert!(matches!(binary_expr.operator.kind, BinaryOperatorKind::Add));
                 assert!(
-                    matches!(binary_expr.left.as_ref(), Expression::Term(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+                    matches!(binary_expr.left.as_ref(), Expression::Term(Term::Atom( atom)) if matches!(atom.kind, AtomKind::NumberLiteral))
                 );
                 assert!(
-                    matches!(binary_expr.right.as_ref(), Expression::Term(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+                    matches!(binary_expr.right.as_ref(), Expression::Term(Term::Atom( atom)) if matches!(atom.kind, AtomKind::NumberLiteral))
                 );
             } else {
                 panic!("Expected Binary expression, got {:?}", expr);
@@ -79,7 +79,7 @@ mod tests {
                     UnaryOperatorKind::Negate
                 ));
                 assert!(
-                    matches!(unary_expr.operand.as_ref(), Expression::Term(atom) if matches!(atom.kind, AtomKind::Identifier))
+                    matches!(unary_expr.operand.as_ref(), Expression::Term(Term::Atom( atom)) if matches!(atom.kind, AtomKind::Identifier))
                 );
             } else {
                 panic!("Expected Unary expression, got {:?}", expr);
@@ -94,7 +94,7 @@ mod tests {
         let stmt = parse_and_check("myVar", 0, 5); // Span of "myVar"
         if let StatementKind::ExpressionStatement(expr) = stmt.kind {
             assert!(
-                matches!(expr, Expression::Term(atom) if matches!(atom.kind, AtomKind::Identifier))
+                matches!(expr, Expression::Term(Term::Atom( atom)) if matches!(atom.kind, AtomKind::Identifier))
             );
         } else {
             panic!("Expected ExpressionStatement, got {:?}", stmt.kind);

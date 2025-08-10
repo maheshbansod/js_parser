@@ -38,6 +38,7 @@ impl Node for ReturnStatement {
 #[cfg(test)]
 mod tests {
     use crate::parser::atom::AtomKind;
+    use crate::parser::expression::term::Term;
     use crate::parser::expression::{BinaryExpression, BinaryOperatorKind, Expression};
     use crate::parser::statement::StatementKind;
     use crate::parser::statement::tests::parse_and_check;
@@ -61,7 +62,7 @@ mod tests {
             assert!(return_stmt.value.is_some());
             if let Some(expr) = return_stmt.value {
                 assert!(
-                    matches!(expr, Expression::Term(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+                    matches!(expr, Expression::Term(Term::Atom( atom)) if matches!(atom.kind, AtomKind::NumberLiteral))
                 );
             }
         } else {
@@ -79,10 +80,10 @@ mod tests {
                 if let Expression::Binary(binary_expr) = expr {
                     assert!(matches!(binary_expr.operator.kind, BinaryOperatorKind::Add));
                     assert!(
-                        matches!(binary_expr.left.as_ref(), Expression::Term(atom) if matches!(atom.kind, AtomKind::Identifier))
+                        matches!(binary_expr.left.as_ref(), Expression::Term(Term::Atom( atom)) if matches!(atom.kind, AtomKind::Identifier))
                     );
                     assert!(
-                        matches!(binary_expr.right.as_ref(), Expression::Term(atom) if matches!(atom.kind, AtomKind::Identifier))
+                        matches!(binary_expr.right.as_ref(), Expression::Term(Term::Atom( atom)) if matches!(atom.kind, AtomKind::Identifier))
                     );
                 } else {
                     panic!(
@@ -123,12 +124,12 @@ mod tests {
             })) = return_stmt.value
             {
                 assert!(matches!(operator.kind, BinaryOperatorKind::MemberAccess));
-                if let Expression::Term(atom) = *left {
+                if let Expression::Term(Term::Atom(atom)) = *left {
                     assert_eq!(atom.kind, AtomKind::This);
                 } else {
                     panic!("left is supposed to be this, got {:?}", left);
                 }
-                if let Expression::Term(atom) = *right {
+                if let Expression::Term(Term::Atom(atom)) = *right {
                     assert_eq!(atom.kind, AtomKind::Identifier);
                 } else {
                     panic!("right is supposed to be this, got {:?}", right);

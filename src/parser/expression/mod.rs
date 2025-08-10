@@ -1,6 +1,9 @@
+pub mod term;
+
 use crate::{
     Token,
     node::Node,
+    parser::expression::term::Term,
     tokenizer::{Span, TokenKind},
 };
 
@@ -20,7 +23,7 @@ impl<'a> Parser<'a> {
     fn parse_expression_with_priority(&mut self, priority: u8) -> Option<Expression> {
         let atom = self.parse_atom();
         let mut current_exp = if let Some(atom) = atom {
-            Expression::Term(atom)
+            Expression::Term(Term::Atom(atom))
         } else {
             // could be an operator next
             if let Some(operator) = self.peek_unary_operator() {
@@ -118,7 +121,7 @@ pub enum Expression {
     FunctionCall(FunctionCallExpression),
     Binary(BinaryExpression),
     Unary(UnaryExpression),
-    Term(Atom),
+    Term(Term),
 }
 
 #[derive(Debug)]
@@ -236,7 +239,7 @@ impl Node for Expression {
         match self {
             Expression::Binary(binary_expression) => binary_expression.span(),
             Expression::Unary(unary_expression) => unary_expression.span(),
-            Expression::Term(atom) => atom.span(),
+            Expression::Term(Term::Atom(atom)) => atom.span(),
             Expression::FunctionCall(function_call) => function_call.span(),
         }
     }
@@ -286,6 +289,7 @@ mod tests {
     use super::{BinaryOperatorKind, Expression, Node, UnaryOperatorKind};
     use crate::parser::Parser;
     use crate::parser::atom::{Atom, AtomKind};
+    use crate::parser::expression::term::Term;
     use crate::tokenizer::TokenKind;
 
     // Helper to create a parser and parse an expression, checking its span
@@ -302,7 +306,7 @@ mod tests {
     fn test_parse_expression_atom_identifier() {
         let expr = parse_and_check("myVar", 0, 5);
         assert!(
-            matches!(expr, Expression::Term(atom) if matches!(atom.kind, AtomKind::Identifier))
+            matches!(expr, Expression::Term(Term::Atom(atom)) if matches!(atom.kind, AtomKind::Identifier))
         );
     }
 
@@ -310,7 +314,7 @@ mod tests {
     fn test_parse_expression_atom_number_literal() {
         let expr = parse_and_check("123", 0, 3);
         assert!(
-            matches!(expr, Expression::Term(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+            matches!(expr, Expression::Term(Term::Atom(atom)) if matches!(atom.kind, AtomKind::NumberLiteral))
         );
     }
 
@@ -318,7 +322,7 @@ mod tests {
     fn test_parse_expression_atom_string_literal() {
         let expr = parse_and_check("\"hello\"", 0, 7);
         assert!(
-            matches!(expr, Expression::Term(atom) if matches!(atom.kind, AtomKind::StringLiteral))
+            matches!(expr, Expression::Term(Term::Atom(atom)) if matches!(atom.kind, AtomKind::StringLiteral))
         );
     }
 
@@ -332,7 +336,7 @@ mod tests {
             ));
             assert_eq!(unary_expr.operator.token.kind, TokenKind::Minus);
             assert!(
-                matches!(unary_expr.operand.as_ref(), Expression::Term(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+                matches!(unary_expr.operand.as_ref(), Expression::Term(Term::Atom(atom)) if matches!(atom.kind, AtomKind::NumberLiteral))
             );
         } else {
             panic!("Expected Unary expression, got {:?}", expr.span()); // Added debug print for clarity on failure
@@ -346,7 +350,7 @@ mod tests {
             assert!(matches!(unary_expr.operator.kind, UnaryOperatorKind::Plus));
             assert_eq!(unary_expr.operator.token.kind, TokenKind::Plus);
             assert!(
-                matches!(unary_expr.operand.as_ref(), Expression::Term(atom) if matches!(atom.kind, AtomKind::Identifier))
+                matches!(unary_expr.operand.as_ref(), Expression::Term(Term::Atom(atom)) if matches!(atom.kind, AtomKind::Identifier))
             );
         } else {
             panic!("Expected Unary expression, got {:?}", expr.span());
@@ -360,10 +364,10 @@ mod tests {
             assert!(matches!(binary_expr.operator.kind, BinaryOperatorKind::Add));
             assert_eq!(binary_expr.operator.token.kind, TokenKind::Plus);
             assert!(
-                matches!(binary_expr.left.as_ref(), Expression::Term(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+                matches!(binary_expr.left.as_ref(), Expression::Term(Term::Atom(atom)) if matches!(atom.kind, AtomKind::NumberLiteral))
             );
             assert!(
-                matches!(binary_expr.right.as_ref(), Expression::Term(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+                matches!(binary_expr.right.as_ref(), Expression::Term(Term::Atom(atom)) if matches!(atom.kind, AtomKind::NumberLiteral))
             );
         } else {
             panic!("Expected Binary expression, got {:?}", expr.span());
@@ -377,16 +381,16 @@ mod tests {
             assert!(matches!(binary_expr.operator.kind, BinaryOperatorKind::Add));
             assert_eq!(binary_expr.operator.token.kind, TokenKind::Plus);
             assert!(
-                matches!(binary_expr.right.as_ref(), Expression::Term(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+                matches!(binary_expr.right.as_ref(), Expression::Term(Term::Atom(atom)) if matches!(atom.kind, AtomKind::NumberLiteral))
             );
             if let Expression::Binary(bin_exp) = binary_expr.left.as_ref() {
                 assert!(matches!(bin_exp.operator.kind, BinaryOperatorKind::Add));
                 assert_eq!(bin_exp.operator.token.kind, TokenKind::Plus);
                 assert!(
-                    matches!(bin_exp.left.as_ref(), Expression::Term(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+                    matches!(bin_exp.left.as_ref(), Expression::Term(Term::Atom(atom)) if matches!(atom.kind, AtomKind::NumberLiteral))
                 );
                 assert!(
-                    matches!(bin_exp.right.as_ref(), Expression::Term(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+                    matches!(bin_exp.right.as_ref(), Expression::Term(Term::Atom(atom)) if matches!(atom.kind, AtomKind::NumberLiteral))
                 );
             } else {
                 panic!("Expected binary expression on the left of the expression");
@@ -406,10 +410,10 @@ mod tests {
             ));
             assert_eq!(binary_expr.operator.token.kind, TokenKind::Minus);
             assert!(
-                matches!(binary_expr.left.as_ref(), Expression::Term(atom) if matches!(atom.kind, AtomKind::Identifier))
+                matches!(binary_expr.left.as_ref(), Expression::Term(Term::Atom(atom)) if matches!(atom.kind, AtomKind::Identifier))
             );
             assert!(
-                matches!(binary_expr.right.as_ref(), Expression::Term(atom) if matches!(atom.kind, AtomKind::Identifier))
+                matches!(binary_expr.right.as_ref(), Expression::Term(Term::Atom(atom)) if matches!(atom.kind, AtomKind::Identifier))
             );
         } else {
             panic!("Expected Binary expression, got {:?}", expr.span());
@@ -420,7 +424,7 @@ mod tests {
         let expr = parse_and_check("foo()", 0, 5);
         if let Expression::FunctionCall(call_expr) = expr {
             assert!(
-                matches!(call_expr.callee.as_ref(), Expression::Term(atom) if matches!(atom.kind, AtomKind::Identifier))
+                matches!(call_expr.callee.as_ref(), Expression::Term(Term::Atom(atom)) if matches!(atom.kind, AtomKind::Identifier))
             );
             assert_eq!(call_expr.args.len(), 0);
             assert!(call_expr.end_token.is_some());
@@ -435,11 +439,11 @@ mod tests {
         let expr = parse_and_check("bar(123)", 0, 8);
         if let Expression::FunctionCall(call_expr) = expr {
             assert!(
-                matches!(call_expr.callee.as_ref(), Expression::Term(atom) if matches!(atom.kind, AtomKind::Identifier))
+                matches!(call_expr.callee.as_ref(), Expression::Term(Term::Atom(atom)) if matches!(atom.kind, AtomKind::Identifier))
             );
             assert_eq!(call_expr.args.len(), 1);
             assert!(
-                matches!(&call_expr.args[0], Expression::Term(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+                matches!(&call_expr.args[0], Expression::Term(Term::Atom(atom)) if matches!(atom.kind, AtomKind::NumberLiteral))
             );
             assert!(call_expr.end_token.is_some());
             assert_eq!(call_expr.end_token.unwrap().kind, TokenKind::RParen);
@@ -453,29 +457,29 @@ mod tests {
         let expr = parse_and_check("baz(1, \"hello\", x)", 0, 18);
         if let Expression::FunctionCall(call_expr) = expr {
             assert!(
-                matches!(call_expr.callee.as_ref(), Expression::Term(atom) if matches!(atom.kind, AtomKind::Identifier))
+                matches!(call_expr.callee.as_ref(), Expression::Term(Term::Atom(atom)) if matches!(atom.kind, AtomKind::Identifier))
             );
             assert_eq!(call_expr.args.len(), 3);
             assert!(matches!(
                 &call_expr.args[0],
-                &Expression::Term(Atom {
+                &Expression::Term(Term::Atom(Atom {
                     span: _,
                     kind: AtomKind::NumberLiteral,
-                })
+                }))
             ));
             assert!(matches!(
                 &call_expr.args[1],
-                Expression::Term(Atom {
+                Expression::Term(Term::Atom(Atom {
                     kind: AtomKind::StringLiteral,
                     span: _
-                })
+                }))
             ));
             assert!(matches!(
                 &call_expr.args[2],
-                Expression::Term(Atom {
+                Expression::Term(Term::Atom(Atom {
                     span: _,
                     kind: AtomKind::Identifier
-                })
+                }))
             ));
             assert!(call_expr.end_token.is_some());
             assert_eq!(call_expr.end_token.unwrap().kind, TokenKind::RParen);
@@ -489,7 +493,7 @@ mod tests {
         let expr = parse_and_check("calc(1 + 2, -3)", 0, 15);
         if let Expression::FunctionCall(call_expr) = expr {
             assert!(
-                matches!(call_expr.callee.as_ref(), Expression::Term(atom) if matches!(atom.kind, AtomKind::Identifier))
+                matches!(call_expr.callee.as_ref(), Expression::Term(Term::Atom(atom)) if matches!(atom.kind, AtomKind::Identifier))
             );
             assert_eq!(call_expr.args.len(), 2);
             assert!(matches!(call_expr.args[0], Expression::Binary(_)));
@@ -536,7 +540,7 @@ mod tests {
         let expr = parse_and_check("foo(1", 0, 5); // Span should end at the last parsed token
         if let Expression::FunctionCall(call_expr) = expr {
             assert!(
-                matches!(call_expr.callee.as_ref(), Expression::Term(atom) if matches!(atom.kind, AtomKind::Identifier))
+                matches!(call_expr.callee.as_ref(), Expression::Term(Term::Atom(atom)) if matches!(atom.kind, AtomKind::Identifier))
             );
             assert_eq!(call_expr.args.len(), 1);
             assert!(call_expr.end_token.is_none()); // Expect no closing parenthesis
@@ -554,10 +558,10 @@ mod tests {
             ));
             assert_eq!(binary_expr.operator.token.kind, TokenKind::Star);
             assert!(
-                matches!(binary_expr.left.as_ref(), Expression::Term(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+                matches!(binary_expr.left.as_ref(), Expression::Term(Term::Atom(atom)) if matches!(atom.kind, AtomKind::NumberLiteral))
             );
             assert!(
-                matches!(binary_expr.right.as_ref(), Expression::Term(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+                matches!(binary_expr.right.as_ref(), Expression::Term(Term::Atom(atom)) if matches!(atom.kind, AtomKind::NumberLiteral))
             );
         } else {
             panic!("Expected Binary expression, got {:?}", expr);
@@ -574,10 +578,10 @@ mod tests {
             ));
             assert_eq!(binary_expr.operator.token.kind, TokenKind::Slash);
             assert!(
-                matches!(binary_expr.left.as_ref(), Expression::Term(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+                matches!(binary_expr.left.as_ref(), Expression::Term(Term::Atom(atom)) if matches!(atom.kind, AtomKind::NumberLiteral))
             );
             assert!(
-                matches!(binary_expr.right.as_ref(), Expression::Term(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+                matches!(binary_expr.right.as_ref(), Expression::Term(Term::Atom(atom)) if matches!(atom.kind, AtomKind::NumberLiteral))
             );
         } else {
             panic!("Expected Binary expression, got {:?}", expr);
@@ -594,10 +598,10 @@ mod tests {
             ));
             assert_eq!(binary_expr.operator.token.kind, TokenKind::Percent);
             assert!(
-                matches!(binary_expr.left.as_ref(), Expression::Term(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+                matches!(binary_expr.left.as_ref(), Expression::Term(Term::Atom(atom)) if matches!(atom.kind, AtomKind::NumberLiteral))
             );
             assert!(
-                matches!(binary_expr.right.as_ref(), Expression::Term(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+                matches!(binary_expr.right.as_ref(), Expression::Term(Term::Atom(atom)) if matches!(atom.kind, AtomKind::NumberLiteral))
             );
         } else {
             panic!("Expected Binary expression, got {:?}", expr);
@@ -610,7 +614,7 @@ mod tests {
         if let Expression::Binary(add_expr) = expr {
             assert!(matches!(add_expr.operator.kind, BinaryOperatorKind::Add));
             assert!(
-                matches!(add_expr.left.as_ref(), Expression::Term(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+                matches!(add_expr.left.as_ref(), Expression::Term(Term::Atom(atom)) if matches!(atom.kind, AtomKind::NumberLiteral))
             );
             if let Expression::Binary(mul_expr) = add_expr.right.as_ref() {
                 assert!(matches!(
@@ -618,10 +622,10 @@ mod tests {
                     BinaryOperatorKind::Multiply
                 ));
                 assert!(
-                    matches!(mul_expr.left.as_ref(), Expression::Term(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+                    matches!(mul_expr.left.as_ref(), Expression::Term(Term::Atom(atom)) if matches!(atom.kind, AtomKind::NumberLiteral))
                 );
                 assert!(
-                    matches!(mul_expr.right.as_ref(), Expression::Term(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+                    matches!(mul_expr.right.as_ref(), Expression::Term(Term::Atom(atom)) if matches!(atom.kind, AtomKind::NumberLiteral))
                 );
             } else {
                 panic!("Expected multiplication on right side of addition");
@@ -640,7 +644,7 @@ mod tests {
                 BinaryOperatorKind::Subtract
             ));
             assert!(
-                matches!(sub_expr.left.as_ref(), Expression::Term(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+                matches!(sub_expr.left.as_ref(), Expression::Term(Term::Atom(atom)) if matches!(atom.kind, AtomKind::NumberLiteral))
             );
             if let Expression::Binary(mul_expr) = sub_expr.right.as_ref() {
                 assert!(matches!(
@@ -648,10 +652,10 @@ mod tests {
                     BinaryOperatorKind::Multiply
                 ));
                 assert!(
-                    matches!(mul_expr.left.as_ref(), Expression::Term(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+                    matches!(mul_expr.left.as_ref(), Expression::Term(Term::Atom(atom)) if matches!(atom.kind, AtomKind::NumberLiteral))
                 );
                 assert!(
-                    matches!(mul_expr.right.as_ref(), Expression::Term(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+                    matches!(mul_expr.right.as_ref(), Expression::Term(Term::Atom(atom)) if matches!(atom.kind, AtomKind::NumberLiteral))
                 );
             } else {
                 panic!("Expected multiplication on right side of subtraction");
@@ -675,13 +679,13 @@ mod tests {
                     UnaryOperatorKind::Negate
                 ));
                 assert!(
-                    matches!(unary_expr.operand.as_ref(), Expression::Term(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+                    matches!(unary_expr.operand.as_ref(), Expression::Term(Term::Atom(atom)) if matches!(atom.kind, AtomKind::NumberLiteral))
                 );
             } else {
                 panic!("Expected unary expression on left side of multiplication");
             }
             assert!(
-                matches!(mul_expr.right.as_ref(), Expression::Term(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+                matches!(mul_expr.right.as_ref(), Expression::Term(Term::Atom(atom)) if matches!(atom.kind, AtomKind::NumberLiteral))
             );
         } else {
             panic!(
@@ -700,7 +704,7 @@ mod tests {
                 BinaryOperatorKind::Multiply
             ));
             assert!(
-                matches!(mul_expr.left.as_ref(), Expression::Term(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+                matches!(mul_expr.left.as_ref(), Expression::Term(Term::Atom(atom)) if matches!(atom.kind, AtomKind::NumberLiteral))
             );
             if let Expression::Unary(unary_expr) = mul_expr.right.as_ref() {
                 assert!(matches!(
@@ -708,7 +712,7 @@ mod tests {
                     UnaryOperatorKind::Negate
                 ));
                 assert!(
-                    matches!(unary_expr.operand.as_ref(), Expression::Term(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+                    matches!(unary_expr.operand.as_ref(), Expression::Term(Term::Atom(atom)) if matches!(atom.kind, AtomKind::NumberLiteral))
                 );
             } else {
                 panic!("Expected unary expression on right side of multiplication");
@@ -727,7 +731,7 @@ mod tests {
         if let Expression::Binary(div_expr) = expr {
             assert!(matches!(div_expr.operator.kind, BinaryOperatorKind::Divide));
             assert!(
-                matches!(div_expr.right.as_ref(), Expression::Term(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+                matches!(div_expr.right.as_ref(), Expression::Term(Term::Atom(atom)) if matches!(atom.kind, AtomKind::NumberLiteral))
             );
             if let Expression::Binary(mul_expr) = div_expr.left.as_ref() {
                 assert!(matches!(
@@ -735,10 +739,10 @@ mod tests {
                     BinaryOperatorKind::Multiply
                 ));
                 assert!(
-                    matches!(mul_expr.left.as_ref(), Expression::Term(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+                    matches!(mul_expr.left.as_ref(), Expression::Term(Term::Atom(atom)) if matches!(atom.kind, AtomKind::NumberLiteral))
                 );
                 assert!(
-                    matches!(mul_expr.right.as_ref(), Expression::Term(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+                    matches!(mul_expr.right.as_ref(), Expression::Term(Term::Atom(atom)) if matches!(atom.kind, AtomKind::NumberLiteral))
                 );
             } else {
                 panic!("Expected multiplication on left side of division");
@@ -809,10 +813,10 @@ mod tests {
             ));
             assert_eq!(binary_expr.operator.token.kind, TokenKind::StarStar);
             assert!(
-                matches!(binary_expr.left.as_ref(), Expression::Term(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+                matches!(binary_expr.left.as_ref(), Expression::Term(Term::Atom(atom)) if matches!(atom.kind, AtomKind::NumberLiteral))
             );
             assert!(
-                matches!(binary_expr.right.as_ref(), Expression::Term(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+                matches!(binary_expr.right.as_ref(), Expression::Term(Term::Atom(atom)) if matches!(atom.kind, AtomKind::NumberLiteral))
             );
         } else {
             panic!("Expected Binary expression, got {:?}", expr);
@@ -828,7 +832,7 @@ mod tests {
                 BinaryOperatorKind::Exponentiation
             ));
             assert!(
-                matches!(outer_exp_expr.left.as_ref(), Expression::Term(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+                matches!(outer_exp_expr.left.as_ref(), Expression::Term(Term::Atom(atom)) if matches!(atom.kind, AtomKind::NumberLiteral))
             );
             if let Expression::Binary(inner_exp_expr) = outer_exp_expr.right.as_ref() {
                 assert!(matches!(
@@ -836,10 +840,10 @@ mod tests {
                     BinaryOperatorKind::Exponentiation
                 ));
                 assert!(
-                    matches!(inner_exp_expr.left.as_ref(), Expression::Term(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+                    matches!(inner_exp_expr.left.as_ref(), Expression::Term(Term::Atom(atom)) if matches!(atom.kind, AtomKind::NumberLiteral))
                 );
                 assert!(
-                    matches!(inner_exp_expr.right.as_ref(), Expression::Term(atom) if matches!(atom.kind, AtomKind::NumberLiteral))
+                    matches!(inner_exp_expr.right.as_ref(), Expression::Term(Term::Atom(atom)) if matches!(atom.kind, AtomKind::NumberLiteral))
                 );
             } else {
                 panic!("Expected inner exponentiation on right side of outer exponentiation");
@@ -869,10 +873,10 @@ mod tests {
                 ));
                 assert_eq!(member_access_expr.operator.token.kind, TokenKind::Dot);
                 assert!(
-                    matches!(member_access_expr.left.as_ref(), Expression::Term(atom) if matches!(atom.kind, AtomKind::This))
+                    matches!(member_access_expr.left.as_ref(), Expression::Term(Term::Atom(atom)) if matches!(atom.kind, AtomKind::This))
                 ); // "this"
                 assert!(
-                    matches!(member_access_expr.right.as_ref(), Expression::Term(atom) if matches!(atom.kind, AtomKind::Identifier))
+                    matches!(member_access_expr.right.as_ref(), Expression::Term(Term::Atom(atom)) if matches!(atom.kind, AtomKind::Identifier))
                 ); // "a"
             } else {
                 panic!(
@@ -883,7 +887,7 @@ mod tests {
 
             // Check the right side of the assignment (a)
             assert!(
-                matches!(assign_expr.right.as_ref(), Expression::Term(atom) if matches!(atom.kind, AtomKind::Identifier))
+                matches!(assign_expr.right.as_ref(), Expression::Term(Term::Atom(atom)) if matches!(atom.kind, AtomKind::Identifier))
             ); // "a"
         } else {
             panic!("Expected Binary expression (Assignment), got {:?}", expr);

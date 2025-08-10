@@ -53,6 +53,7 @@ pub struct IfStatement {
 mod tests {
     use crate::parser::atom::AtomKind;
     use crate::parser::expression::Expression;
+    use crate::parser::expression::term::Term;
     use crate::parser::statement::StatementKind;
     use crate::parser::statement::tests::parse_and_check;
     #[test]
@@ -60,7 +61,7 @@ mod tests {
         let stmt = parse_and_check("if (true) {}", 0, 12);
         if let StatementKind::IfStatement(if_stmt) = stmt.kind {
             assert!(
-                matches!(if_stmt.condition, Expression::Term(atom) if matches!(atom.kind, AtomKind::BooleanLiteral))
+                matches!(if_stmt.condition, Expression::Term(Term::Atom( atom)) if matches!(atom.kind, AtomKind::BooleanLiteral))
             );
             if let StatementKind::BlockStatement(block) = if_stmt.consequent.kind {
                 assert!(block.body.is_empty());
@@ -78,7 +79,7 @@ mod tests {
         let stmt = parse_and_check("if (false) { 1; }", 0, 17);
         if let StatementKind::IfStatement(if_stmt) = stmt.kind {
             assert!(
-                matches!(if_stmt.condition, Expression::Term(atom) if matches!(atom.kind, AtomKind::BooleanLiteral))
+                matches!(if_stmt.condition, Expression::Term(Term::Atom( atom)) if matches!(atom.kind, AtomKind::BooleanLiteral))
             );
             if let StatementKind::BlockStatement(block) = if_stmt.consequent.kind {
                 assert_eq!(block.body.len(), 1);
@@ -100,7 +101,7 @@ mod tests {
         let stmt = parse_and_check("if (a) { b; } else { c; }", 0, 25);
         if let StatementKind::IfStatement(if_stmt) = stmt.kind {
             assert!(
-                matches!(if_stmt.condition, Expression::Term(atom) if matches!(atom.kind, AtomKind::Identifier))
+                matches!(if_stmt.condition, Expression::Term(Term::Atom( atom)) if matches!(atom.kind, AtomKind::Identifier))
             );
             if let StatementKind::BlockStatement(consequent_block) = if_stmt.consequent.kind {
                 assert_eq!(consequent_block.body.len(), 1);
@@ -125,7 +126,7 @@ mod tests {
         let stmt = parse_and_check("if (a) { b; } else if (c) { d; } else { e; }", 0, 44);
         if let StatementKind::IfStatement(if_stmt) = stmt.kind {
             assert!(
-                matches!(if_stmt.condition, Expression::Term(atom) if matches!(atom.kind, AtomKind::Identifier))
+                matches!(if_stmt.condition, Expression::Term(Term::Atom( atom)) if matches!(atom.kind, AtomKind::Identifier))
             );
             if let StatementKind::BlockStatement(consequent_block) = if_stmt.consequent.kind {
                 assert_eq!(consequent_block.body.len(), 1);
@@ -137,7 +138,7 @@ mod tests {
             if let Some(alternate_stmt) = if_stmt.alternate {
                 if let StatementKind::IfStatement(nested_if_stmt) = alternate_stmt.kind {
                     assert!(
-                        matches!(nested_if_stmt.condition, Expression::Term(atom) if matches!(atom.kind, AtomKind::Identifier))
+                        matches!(nested_if_stmt.condition, Expression::Term(Term::Atom( atom)) if matches!(atom.kind, AtomKind::Identifier))
                     );
                     if let StatementKind::BlockStatement(nested_consequent_block) =
                         nested_if_stmt.consequent.kind

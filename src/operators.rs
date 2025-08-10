@@ -69,4 +69,3 @@ pub fn operators_map() -> &'static Vec<(&'static str, TokenKind)> {
         ops
     })
 }
-

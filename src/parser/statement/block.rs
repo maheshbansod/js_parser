@@ -51,6 +51,7 @@ impl Node for BlockStatement {
 #[cfg(test)]
 mod tests {
     use crate::parser::atom::AtomKind;
+    use crate::parser::expression::term::Term;
     use crate::parser::expression::{BinaryOperatorKind, Expression};
     use crate::parser::statement::StatementKind;
     use crate::parser::statement::tests::parse_and_check;
@@ -117,12 +118,12 @@ mod tests {
                     let right = exp.right;
                     let operator = exp.operator;
                     assert!(matches!(operator.kind, BinaryOperatorKind::MemberAccess));
-                    if let Expression::Term(atom) = *left {
+                    if let Expression::Term(Term::Atom(atom)) = *left {
                         assert_eq!(atom.kind, AtomKind::This);
                     } else {
                         panic!("left is supposed to be this, got {:?}", left);
                     }
-                    if let Expression::Term(atom) = *right {
+                    if let Expression::Term(Term::Atom(atom)) = *right {
                         assert_eq!(atom.kind, AtomKind::Identifier);
                     } else {
                         panic!("right is supposed to be this, got {:?}", right);

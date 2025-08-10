@@ -211,7 +211,10 @@ mod tests {
         assert!(class_def.super_class_name.is_none());
         assert!(class_def.members.is_empty());
         assert!(class_def.end_token.is_some());
-        assert_eq!(class_def.end_token.as_ref().unwrap().kind, TokenKind::RBrace);
+        assert_eq!(
+            class_def.end_token.as_ref().unwrap().kind,
+            TokenKind::RBrace
+        );
     }
 
     #[test]
@@ -232,7 +235,10 @@ mod tests {
         );
         assert!(class_def.members.is_empty());
         assert!(class_def.end_token.is_some());
-        assert_eq!(class_def.end_token.as_ref().unwrap().kind, TokenKind::RBrace);
+        assert_eq!(
+            class_def.end_token.as_ref().unwrap().kind,
+            TokenKind::RBrace
+        );
     }
 
     #[test]
