@@ -240,8 +240,7 @@ impl Node for Expression {
         match self {
             Expression::Binary(binary_expression) => binary_expression.span(),
             Expression::Unary(unary_expression) => unary_expression.span(),
-            Expression::Term(Term::Atom(atom)) => atom.span(),
-            Expression::Term(Term::FunctionDefinition(function_call)) => function_call.span(),
+            Expression::Term(term) => term.span(),
             Expression::FunctionCall(function_call) => function_call.span(),
         }
     }
