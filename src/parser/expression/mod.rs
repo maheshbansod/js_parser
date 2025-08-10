@@ -8,7 +8,7 @@ use crate::{
     tokenizer::{Span, TokenKind},
 };
 
-use super::{Parser};
+use super::Parser;
 
 /**
  * Pratt parsing gang lets go

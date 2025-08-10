@@ -1,9 +1,14 @@
-use crate::{node::Node, parser::{atom::Atom, expression::function_definition::FunctionDefinition}, Parser};
+use crate::{
+    Parser,
+    node::Node,
+    parser::{atom::Atom, expression::function_definition::FunctionDefinition},
+};
 
 impl<'a> Parser<'a> {
     pub fn parse_term(&mut self) -> Option<Term> {
         self.parse_atom().map(Term::Atom).or_else(|| {
-            self.parse_function_definition().map(Term::FunctionDefinition)
+            self.parse_function_definition()
+                .map(Term::FunctionDefinition)
         })
     }
 }

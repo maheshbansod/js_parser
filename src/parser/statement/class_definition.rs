@@ -1,5 +1,11 @@
 use crate::{
-    node::Node, parser::{expression::{function_definition::Parameter, Expression}, statement::StatementKind}, tokenizer::{Span, TokenKind}, Parser, Token
+    Parser, Token,
+    node::Node,
+    parser::{
+        expression::{Expression, function_definition::Parameter},
+        statement::StatementKind,
+    },
+    tokenizer::{Span, TokenKind},
 };
 
 use super::{Statement, block::BlockStatement};

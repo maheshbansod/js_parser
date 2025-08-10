@@ -1,7 +1,9 @@
 use crate::{
-    node::Node, parser::statement::{BlockStatement, StatementKind}, tokenizer::{Span, TokenKind}, Parser, Token
+    Parser, Token,
+    node::Node,
+    parser::statement::{BlockStatement, StatementKind},
+    tokenizer::{Span, TokenKind},
 };
-
 
 pub type Parameter = Token;
 
@@ -18,16 +20,14 @@ impl<'a> Parser<'a> {
         self.consume_token_if(TokenKind::RParen);
         let block = self.parse_block_statement()?;
         if let StatementKind::BlockStatement(block) = block.kind {
-            Some(
-                FunctionDefinition {
-                    function_token,
-                    name,
-                    parameters: params,
-                    body: block,
-                    async_token,
-                    generator_token,
-                }
-            )
+            Some(FunctionDefinition {
+                function_token,
+                name,
+                parameters: params,
+                body: block,
+                async_token,
+                generator_token,
+            })
         } else {
             None
         }
@@ -86,9 +86,9 @@ impl Node for FunctionDefinition {
 
 #[cfg(test)]
 mod tests {
+    use crate::parser::expression::Expression;
     use crate::parser::expression::term::Term;
     use crate::parser::expression::tests::parse_and_check;
-    use crate::parser::expression::{Expression};
     use crate::parser::statement::StatementKind;
     use crate::tokenizer::TokenKind;
 
@@ -215,7 +215,7 @@ mod tests {
             panic!("Expected FunctionDefinition, got {:?}", stmt);
         }
     }
-    
+
     #[test]
     fn test_parse_function_definition_assignment() {
         let source = "x = function() {}";
@@ -225,10 +225,14 @@ mod tests {
             if let Expression::Term(Term::Atom(atom)) = binary_expr.left.as_ref() {
                 assert_eq!(atom.span.source(source), "x");
             } else {
-                panic!("Expected left side to be identifier, got {:?}", binary_expr.left);
+                panic!(
+                    "Expected left side to be identifier, got {:?}",
+                    binary_expr.left
+                );
             }
             // Right side should be function definition with no name
-            if let Expression::Term(Term::FunctionDefinition(func_def)) = binary_expr.right.as_ref() {
+            if let Expression::Term(Term::FunctionDefinition(func_def)) = binary_expr.right.as_ref()
+            {
                 assert!(!func_def.is_async());
                 assert!(!func_def.is_generator());
                 assert_eq!(func_def.function_token.kind, TokenKind::Function);
@@ -236,7 +240,10 @@ mod tests {
                 assert!(func_def.parameters.is_empty());
                 assert!(func_def.body.body.is_empty());
             } else {
-                panic!("Expected right side to be FunctionDefinition, got {:?}", binary_expr.right);
+                panic!(
+                    "Expected right side to be FunctionDefinition, got {:?}",
+                    binary_expr.right
+                );
             }
         } else {
             panic!("Expected BinaryExpression, got {:?}", expr);
