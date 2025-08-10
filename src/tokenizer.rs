@@ -133,10 +133,6 @@ impl<'a> Tokenizer<'a> {
         self.consume_string(s).map(|span| Token { span, kind })
     }
 
-    fn consume_alphanumeric(&mut self) -> Option<Span> {
-        self.consume_till(|c| !c.is_alphanumeric())
-    }
-
     /// Consumes if the upcoming word (till word boundary reached)
     /// is equal to the given string
     fn consume_word(&mut self, s: &str) -> Option<Span> {
