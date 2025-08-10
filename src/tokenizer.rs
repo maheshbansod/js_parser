@@ -406,7 +406,7 @@ mod tests {
         assert_eq!(tokenizer.next().unwrap().kind, TokenKind::Eq);
         assert_eq!(tokenizer.next().unwrap().kind, TokenKind::Identifier); // "bar"
         assert_eq!(tokenizer.next().unwrap().kind, TokenKind::Semicolon);
-        assert!(tokenizer.next().is_none()); // Eof
+        assert_eq!(tokenizer.next().unwrap().kind, TokenKind::Eof); // Eof
     }
 
     #[test]
@@ -419,7 +419,7 @@ mod tests {
         assert_eq!(tokenizer.next().unwrap().kind, TokenKind::Eq);
         assert_eq!(tokenizer.next().unwrap().kind, TokenKind::StringLiteral);
         assert_eq!(tokenizer.next().unwrap().kind, TokenKind::Semicolon);
-        assert!(tokenizer.next().is_none()); // Eof
+        assert_eq!(tokenizer.next().unwrap().kind, TokenKind::Eof); // Eof
     }
 
     #[test]
@@ -432,7 +432,7 @@ mod tests {
         assert_eq!(tokenizer.next().unwrap().kind, TokenKind::Eq);
         assert_eq!(tokenizer.next().unwrap().kind, TokenKind::NumberLiteral);
         assert_eq!(tokenizer.next().unwrap().kind, TokenKind::Semicolon);
-        assert!(tokenizer.next().is_none()); // Eof
+        assert_eq!(tokenizer.next().unwrap().kind, TokenKind::Eof); // Eof
     }
 
     #[test]
@@ -445,7 +445,7 @@ mod tests {
         assert_eq!(tokenizer.next().unwrap().kind, TokenKind::Identifier); // "b"
         assert_eq!(tokenizer.next().unwrap().kind, TokenKind::Minus);
         assert_eq!(tokenizer.next().unwrap().kind, TokenKind::Identifier); // "c"
-        assert!(tokenizer.next().is_none()); // Eof
+        assert_eq!(tokenizer.next().unwrap().kind, TokenKind::Eof); // Eof
     }
 
     #[test]
@@ -456,7 +456,7 @@ mod tests {
         assert_eq!(tokenizer.next().unwrap().kind, TokenKind::Identifier); // "a"
         assert_eq!(tokenizer.next().unwrap().kind, TokenKind::EqEqEq); // Should be '===' not '=' then '=='
         assert_eq!(tokenizer.next().unwrap().kind, TokenKind::Identifier); // "b"
-        assert!(tokenizer.next().is_none()); // Eof
+        assert_eq!(tokenizer.next().unwrap().kind, TokenKind::Eof); // Eof
     }
 
     #[test]
@@ -465,7 +465,7 @@ mod tests {
         let mut tokenizer = Tokenizer::new(source);
 
         assert_eq!(tokenizer.next().unwrap().kind, TokenKind::Identifier);
-        assert!(tokenizer.next().is_none());
+        assert_eq!(tokenizer.next().unwrap().kind, TokenKind::Eof); // Eof
     }
 
     #[test]
@@ -474,7 +474,7 @@ mod tests {
         let mut tokenizer = Tokenizer::new(source);
 
         assert_eq!(tokenizer.next().unwrap().kind, TokenKind::Identifier); // Should be 'if_condition' as one identifier
-        assert!(tokenizer.next().is_none()); // Eof
+        assert_eq!(tokenizer.next().unwrap().kind, TokenKind::Eof); // Eof
     }
 
     #[test]
@@ -496,7 +496,7 @@ mod tests {
         assert_eq!(tokenizer.next().unwrap().kind, TokenKind::Identifier); // "b"
         assert_eq!(tokenizer.next().unwrap().kind, TokenKind::Semicolon);
         assert_eq!(tokenizer.next().unwrap().kind, TokenKind::RBrace);
-        assert!(tokenizer.next().is_none()); // Eof
+        assert_eq!(tokenizer.next().unwrap().kind, TokenKind::Eof); // Eof
     }
     #[test]
     fn test_tokenizer_boolean_literal() {
@@ -513,7 +513,7 @@ mod tests {
         assert_eq!(tokenizer.next().unwrap().kind, TokenKind::Eq);
         assert_eq!(tokenizer.next().unwrap().kind, TokenKind::BooleanLiteral); // "false"
         assert_eq!(tokenizer.next().unwrap().kind, TokenKind::Semicolon);
-        assert!(tokenizer.next().is_none()); // Eof
+        assert_eq!(tokenizer.next().unwrap().kind, TokenKind::Eof); // Eof
     }
 
     #[test]
