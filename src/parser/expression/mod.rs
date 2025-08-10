@@ -156,20 +156,81 @@ pub enum BinaryOperatorKind {
     Modulo,
     Multiply,
     Subtract,
+    EqEq,
+    BangEq,
+    EqEqEq,
+    BangEqEq,
+    Lt,
+    LtEq,
+    Gt,
+    GtEq,
+    AmpAmp,
+    PipePipe,
+    Amp,
+    Pipe,
+    Caret,
+    LtLt,
+    GtGt,
+    GtGtGt,
+    PlusEq,
+    MinusEq,
+    StarEq,
+    SlashEq,
+    PercentEq,
+    StarStarEq,
+    LtLtEq,
+    GtGtEq,
+    GtGtGtEq,
+    AmpEq,
+    PipeEq,
+    CaretEq,
+    QuestionQuestion,
+    QuestionQuestionEq,
 }
 
 impl BinaryOperatorKind {
     fn priority(&self) -> (u8, u8) {
         match self {
-            BinaryOperatorKind::Subtract | BinaryOperatorKind::Add => (4, 3),
-            BinaryOperatorKind::Exponentiation => (7, 8),
-            BinaryOperatorKind::Assign => (1, 2),
-            BinaryOperatorKind::Modulo
-            | BinaryOperatorKind::Multiply
-            | BinaryOperatorKind::Divide => (6, 5),
-            Self::MemberAccess => (10, 9),
+            BinaryOperatorKind::Assign
+            | BinaryOperatorKind::PlusEq
+            | BinaryOperatorKind::MinusEq
+            | BinaryOperatorKind::StarEq
+            | BinaryOperatorKind::SlashEq
+            | BinaryOperatorKind::PercentEq
+            | BinaryOperatorKind::StarStarEq
+            | BinaryOperatorKind::LtLtEq
+            | BinaryOperatorKind::GtGtEq
+            | BinaryOperatorKind::GtGtGtEq
+            | BinaryOperatorKind::AmpEq
+            | BinaryOperatorKind::PipeEq
+            | BinaryOperatorKind::CaretEq
+            | BinaryOperatorKind::QuestionQuestionEq => (1, 2),
+            BinaryOperatorKind::PipePipe => (3, 2),
+            BinaryOperatorKind::AmpAmp => (4, 3),
+            BinaryOperatorKind::Pipe => (5, 4),
+            BinaryOperatorKind::Caret => (6, 5),
+            BinaryOperatorKind::Amp => (7, 6),
+            BinaryOperatorKind::EqEq
+            | BinaryOperatorKind::BangEq
+            | BinaryOperatorKind::EqEqEq
+            | BinaryOperatorKind::BangEqEq => (8, 7),
+            BinaryOperatorKind::Lt
+            | BinaryOperatorKind::LtEq
+            | BinaryOperatorKind::Gt
+            | BinaryOperatorKind::GtEq => (9, 8),
+            BinaryOperatorKind::LtLt | BinaryOperatorKind::GtGt | BinaryOperatorKind::GtGtGt => {
+                (10, 9)
+            }
+            BinaryOperatorKind::Add | BinaryOperatorKind::Subtract => (11, 10),
+            BinaryOperatorKind::Multiply
+            | BinaryOperatorKind::Divide
+            | BinaryOperatorKind::Modulo => (12, 11),
+            BinaryOperatorKind::Exponentiation => (13, 14),
+            BinaryOperatorKind::MemberAccess => (15, 16),
+            BinaryOperatorKind::QuestionQuestion => (17, 18),
         }
     }
+
     fn try_from_token_kind(token_kind: TokenKind) -> Option<Self> {
         match token_kind {
             TokenKind::Plus => Some(BinaryOperatorKind::Add),
@@ -180,6 +241,36 @@ impl BinaryOperatorKind {
             TokenKind::Slash => Some(BinaryOperatorKind::Divide),
             TokenKind::Dot => Some(BinaryOperatorKind::MemberAccess),
             TokenKind::Eq => Some(BinaryOperatorKind::Assign),
+            TokenKind::EqEq => Some(BinaryOperatorKind::EqEq),
+            TokenKind::BangEq => Some(BinaryOperatorKind::BangEq),
+            TokenKind::EqEqEq => Some(BinaryOperatorKind::EqEqEq),
+            TokenKind::BangEqEq => Some(BinaryOperatorKind::BangEqEq),
+            TokenKind::Lt => Some(BinaryOperatorKind::Lt),
+            TokenKind::LtEq => Some(BinaryOperatorKind::LtEq),
+            TokenKind::Gt => Some(BinaryOperatorKind::Gt),
+            TokenKind::GtEq => Some(BinaryOperatorKind::GtEq),
+            TokenKind::AmpAmp => Some(BinaryOperatorKind::AmpAmp),
+            TokenKind::PipePipe => Some(BinaryOperatorKind::PipePipe),
+            TokenKind::Amp => Some(BinaryOperatorKind::Amp),
+            TokenKind::Pipe => Some(BinaryOperatorKind::Pipe),
+            TokenKind::Caret => Some(BinaryOperatorKind::Caret),
+            TokenKind::LtLt => Some(BinaryOperatorKind::LtLt),
+            TokenKind::GtGt => Some(BinaryOperatorKind::GtGt),
+            TokenKind::GtGtGt => Some(BinaryOperatorKind::GtGtGt),
+            TokenKind::PlusEq => Some(BinaryOperatorKind::PlusEq),
+            TokenKind::MinusEq => Some(BinaryOperatorKind::MinusEq),
+            TokenKind::StarEq => Some(BinaryOperatorKind::StarEq),
+            TokenKind::SlashEq => Some(BinaryOperatorKind::SlashEq),
+            TokenKind::PercentEq => Some(BinaryOperatorKind::PercentEq),
+            TokenKind::StarStarEq => Some(BinaryOperatorKind::StarStarEq),
+            TokenKind::LtLtEq => Some(BinaryOperatorKind::LtLtEq),
+            TokenKind::GtGtEq => Some(BinaryOperatorKind::GtGtEq),
+            TokenKind::GtGtGtEq => Some(BinaryOperatorKind::GtGtGtEq),
+            TokenKind::AmpEq => Some(BinaryOperatorKind::AmpEq),
+            TokenKind::PipeEq => Some(BinaryOperatorKind::PipeEq),
+            TokenKind::CaretEq => Some(BinaryOperatorKind::CaretEq),
+            TokenKind::QuestionQuestion => Some(BinaryOperatorKind::QuestionQuestion),
+            TokenKind::QuestionQuestionEq => Some(BinaryOperatorKind::QuestionQuestionEq),
             _ => None,
         }
     }
@@ -892,6 +983,175 @@ mod tests {
             ); // "a"
         } else {
             panic!("Expected Binary expression (Assignment), got {:?}", expr);
+        }
+    }
+
+    #[test]
+    fn test_parse_all_possible_binary_operators() {
+        use crate::tokenizer::TokenKind;
+
+        let sources = [
+            ("1 + 2", Some(BinaryOperatorKind::Add), TokenKind::Plus),
+            (
+                "3 - 4",
+                Some(BinaryOperatorKind::Subtract),
+                TokenKind::Minus,
+            ),
+            ("5 * 6", Some(BinaryOperatorKind::Multiply), TokenKind::Star),
+            ("7 / 8", Some(BinaryOperatorKind::Divide), TokenKind::Slash),
+            (
+                "9 % 2",
+                Some(BinaryOperatorKind::Modulo),
+                TokenKind::Percent,
+            ),
+            (
+                "2 ** 3",
+                Some(BinaryOperatorKind::Exponentiation),
+                TokenKind::StarStar,
+            ),
+            (
+                "foo.bar",
+                Some(BinaryOperatorKind::MemberAccess),
+                TokenKind::Dot,
+            ),
+            ("a = b", Some(BinaryOperatorKind::Assign), TokenKind::Eq),
+            ("1 == 2", Some(BinaryOperatorKind::EqEq), TokenKind::EqEq),
+            (
+                "1 != 2",
+                Some(BinaryOperatorKind::BangEq),
+                TokenKind::BangEq,
+            ),
+            (
+                "1 === 2",
+                Some(BinaryOperatorKind::EqEqEq),
+                TokenKind::EqEqEq,
+            ),
+            (
+                "1 !== 2",
+                Some(BinaryOperatorKind::BangEqEq),
+                TokenKind::BangEqEq,
+            ),
+            ("1 < 2", Some(BinaryOperatorKind::Lt), TokenKind::Lt),
+            ("1 <= 2", Some(BinaryOperatorKind::LtEq), TokenKind::LtEq),
+            ("1 > 2", Some(BinaryOperatorKind::Gt), TokenKind::Gt),
+            ("1 >= 2", Some(BinaryOperatorKind::GtEq), TokenKind::GtEq),
+            (
+                "1 && 2",
+                Some(BinaryOperatorKind::AmpAmp),
+                TokenKind::AmpAmp,
+            ),
+            (
+                "1 || 2",
+                Some(BinaryOperatorKind::PipePipe),
+                TokenKind::PipePipe,
+            ),
+            ("1 & 2", Some(BinaryOperatorKind::Amp), TokenKind::Amp),
+            ("1 | 2", Some(BinaryOperatorKind::Pipe), TokenKind::Pipe),
+            ("1 ^ 2", Some(BinaryOperatorKind::Caret), TokenKind::Caret),
+            ("1 << 2", Some(BinaryOperatorKind::LtLt), TokenKind::LtLt),
+            ("1 >> 2", Some(BinaryOperatorKind::GtGt), TokenKind::GtGt),
+            (
+                "1 >>> 2",
+                Some(BinaryOperatorKind::GtGtGt),
+                TokenKind::GtGtGt,
+            ),
+            (
+                "a += b",
+                Some(BinaryOperatorKind::PlusEq),
+                TokenKind::PlusEq,
+            ),
+            (
+                "a -= b",
+                Some(BinaryOperatorKind::MinusEq),
+                TokenKind::MinusEq,
+            ),
+            (
+                "a *= b",
+                Some(BinaryOperatorKind::StarEq),
+                TokenKind::StarEq,
+            ),
+            (
+                "a /= b",
+                Some(BinaryOperatorKind::SlashEq),
+                TokenKind::SlashEq,
+            ),
+            (
+                "a %= b",
+                Some(BinaryOperatorKind::PercentEq),
+                TokenKind::PercentEq,
+            ),
+            (
+                "a **= b",
+                Some(BinaryOperatorKind::StarStarEq),
+                TokenKind::StarStarEq,
+            ),
+            (
+                "a <<= b",
+                Some(BinaryOperatorKind::LtLtEq),
+                TokenKind::LtLtEq,
+            ),
+            (
+                "a >>= b",
+                Some(BinaryOperatorKind::GtGtEq),
+                TokenKind::GtGtEq,
+            ),
+            (
+                "a >>>= b",
+                Some(BinaryOperatorKind::GtGtGtEq),
+                TokenKind::GtGtGtEq,
+            ),
+            ("a &= b", Some(BinaryOperatorKind::AmpEq), TokenKind::AmpEq),
+            (
+                "a |= b",
+                Some(BinaryOperatorKind::PipeEq),
+                TokenKind::PipeEq,
+            ),
+            (
+                "a ^= b",
+                Some(BinaryOperatorKind::CaretEq),
+                TokenKind::CaretEq,
+            ),
+            (
+                "a ?? b",
+                Some(BinaryOperatorKind::QuestionQuestion),
+                TokenKind::QuestionQuestion,
+            ),
+            (
+                "a ??= b",
+                Some(BinaryOperatorKind::QuestionQuestionEq),
+                TokenKind::QuestionQuestionEq,
+            ),
+            // Add more as needed
+        ];
+
+        for (src, expected_kind, expected_token) in sources {
+            let expr = parse_and_check(src, 0, src.len());
+            match expected_kind {
+                Some(kind) => {
+                    if let Expression::Binary(bin_expr) = expr {
+                        assert_eq!(
+                            bin_expr.operator.kind, kind,
+                            "Operator kind mismatch for '{}'",
+                            src
+                        );
+                        assert_eq!(
+                            bin_expr.operator.token.kind, expected_token,
+                            "Token kind mismatch for '{}'",
+                            src
+                        );
+                    } else {
+                        panic!("Expected Binary expression for '{}', got {:?}", src, expr);
+                    }
+                }
+                None => {
+                    // Not supported: should NOT parse as Binary
+                    assert!(
+                        !matches!(expr, Expression::Binary(_)),
+                        "Unexpectedly parsed unsupported operator as Binary for '{}'",
+                        src
+                    );
+                }
+            }
         }
     }
 }

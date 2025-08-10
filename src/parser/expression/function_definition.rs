@@ -249,14 +249,18 @@ mod tests {
             panic!("Expected BinaryExpression, got {:?}", expr);
         }
     }
-    
+
     #[test]
     fn test_parse_function_definition_iife() {
         let source = "(function() {})()";
         let expr = parse_and_check(source, 0, 17);
         if let Expression::FunctionCall(call_expr) = expr {
-            if let Expression::Term(Term::BracketedExpression(bracketed_expr)) = call_expr.callee.as_ref() {
-                if let Expression::Term(Term::FunctionDefinition(func_def)) = bracketed_expr.expression.as_ref() {
+            if let Expression::Term(Term::BracketedExpression(bracketed_expr)) =
+                call_expr.callee.as_ref()
+            {
+                if let Expression::Term(Term::FunctionDefinition(func_def)) =
+                    bracketed_expr.expression.as_ref()
+                {
                     assert!(!func_def.is_async());
                     assert!(!func_def.is_generator());
                     assert_eq!(func_def.function_token.kind, TokenKind::Function);
@@ -264,10 +268,16 @@ mod tests {
                     assert!(func_def.parameters.is_empty());
                     assert!(func_def.body.body.is_empty());
                 } else {
-                    panic!("Expected FunctionDefinition inside BracketedExpression, got {:?}", bracketed_expr.expression);
+                    panic!(
+                        "Expected FunctionDefinition inside BracketedExpression, got {:?}",
+                        bracketed_expr.expression
+                    );
                 }
             } else {
-                panic!("Expected BracketedExpression as callee, got {:?}", call_expr.callee);
+                panic!(
+                    "Expected BracketedExpression as callee, got {:?}",
+                    call_expr.callee
+                );
             }
             // Arguments should be empty
             assert!(call_expr.args.is_empty());
