@@ -29,6 +29,33 @@ impl<'a> Tokenizer<'a> {
             .or_else(|| self.consume_literal())
             .or_else(|| self.consume_identifier())
             .or_else(|| self.consume_operator())
+            .or_else(|| self.consume_end_of_file())
+    }
+
+    fn consume_end_of_file(&mut self) -> Option<Token> {
+        if self.is_end_of_file() {
+            Some(Token {
+                span: Span {
+                    start: Position {
+                        line: self.line,
+                        column: self.column,
+                        index: self.index,
+                    },
+                    end: Position {
+                        line: self.line,
+                        column: self.column,
+                        index: self.index,
+                    },
+                },
+                kind: TokenKind::Eof,
+            })
+        } else {
+            None
+        }
+    }
+
+    pub fn is_end_of_file(&self) -> bool {
+        self.it.clone().next().is_none()
     }
 
     fn consume_whitespace(&mut self) {

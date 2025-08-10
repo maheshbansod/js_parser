@@ -19,8 +19,15 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse(&mut self) -> ParseTree {
-        self.parse_expression();
-        todo!()
+        let mut statements = Vec::new();
+        while !self.tokenizer.is_end_of_file() {
+            if let Some(statement) = self.parse_statement() {
+                statements.push(statement);
+            } else {
+                // Handle unexpected tokens or errors
+                self.tokenizer.next(); // Skip the unexpected token
+            }
+        }
     }
 
     fn tok_look_ahead(&self) -> Option<Token> {
