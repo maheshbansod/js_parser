@@ -1,4 +1,4 @@
-use crate::{Parser, parser::atom::Atom};
+use crate::{node::Node, parser::atom::Atom, Parser};
 
 impl<'a> Parser<'a> {
     pub fn parse_term(&mut self) -> Option<Term> {
@@ -9,4 +9,12 @@ impl<'a> Parser<'a> {
 #[derive(Debug)]
 pub enum Term {
     Atom(Atom),
+}
+
+impl Node for Term {
+    fn span(&self) -> crate::tokenizer::Span {
+        match self {
+            Term::Atom(atom) => atom.span(),
+        }
+    }
 }
